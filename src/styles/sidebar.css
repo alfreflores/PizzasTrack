@@ -1,0 +1,44 @@
+.sidebar {
+    width: 240px;
+    background-color: #f4f5f7;
+    height: 100vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  
+  .logo {
+    font-weight: bold;
+    margin-bottom: 20px;
+  }
+  
+  .user-info {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .user-info img {
+    border-radius: 50%;
+    margin-bottom: 8px;
+  }
+  
+  .nav-links a {
+    display: block;
+    padding: 10px;
+    color: #333;
+    text-decoration: none;
+  }
+  
+  .nav-links a:hover {
+    background-color: #e0e0e0;
+    border-radius: 8px;
+  }
+  
+  .logout-btn {
+    background: none;
+    border: none;
+    color: red;
+    cursor: pointer;
+  }
+  
