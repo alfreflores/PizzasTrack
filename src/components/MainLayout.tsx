@@ -1,21 +1,16 @@
 // src/components/MainLayout.tsx
 
-import Sidebar from './Sidebar'
-import Navbar from './Navbar'
+import Sidebar from './Sidebar';
+import Navbar from './Navbar';
 
 interface Props {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 const MainLayout = ({ children }: Props) => {
   return (
     <div className="flex h-screen">
-      {/* Sidebar - ancho fijo */}
-      <div className="w-64 bg-gray-100">
-        <Sidebar />
-      </div>
-
-      {/* Contenido principal */}
+      <Sidebar />
       <div className="flex flex-col flex-1">
         <Navbar />
         <main className="flex-1 bg-gray-100 p-4 overflow-y-auto">
@@ -23,7 +18,8 @@ const MainLayout = ({ children }: Props) => {
         </main>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default MainLayout
+export default MainLayout;
+
