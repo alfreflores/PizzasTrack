@@ -9,9 +9,9 @@ const Navbar: React.FC = () => {
   });
 
   return (
-    <header className="navbar">
+    <header className="w-full h-16 flex items-center justify-between px-4 bg-white shadow">
       <h3>Inicio</h3>
-      <div className="nav-right">
+      <div className="flex items-center gap-4">
         <span>🔔</span>
         <span>{currentTime}</span>
       </div>

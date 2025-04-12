@@ -1,23 +1,29 @@
 // src/components/MainLayout.tsx
-import React from 'react';
-import Sidebar from './Sidebar';
-import Navbar from './Navbar';
-import '../styles/dashboard.css';
 
-interface MainLayoutProps {
-  children: React.ReactNode;
+import Sidebar from './Sidebar'
+import Navbar from './Navbar'
+
+interface Props {
+  children: React.ReactNode
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+const MainLayout = ({ children }: Props) => {
   return (
-    <div className="layout">
-      <Sidebar />
-      <div className="main-content">
+    <div className="flex h-screen">
+      {/* Sidebar - ancho fijo */}
+      <div className="w-64 bg-gray-100">
+        <Sidebar />
+      </div>
+
+      {/* Contenido principal */}
+      <div className="flex flex-col flex-1">
         <Navbar />
-        <div className="content-body">{children}</div>
+        <main className="flex-1 bg-gray-100 p-4 overflow-y-auto">
+          {children}
+        </main>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default MainLayout;
+export default MainLayout

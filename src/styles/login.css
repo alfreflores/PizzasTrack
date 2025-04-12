@@ -9,7 +9,7 @@
   }
   
   .login-card {
-    background-color: rgba(255, 255, 255, 0.95);
+    background-color: rgb(255, 255, 255);
     padding: 40px;
     border-radius: 12px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
@@ -27,10 +27,14 @@
     width: 100%;
     padding: 12px;
     margin-bottom: 16px;
-    border: 1px solid #ccc;
+    border: 1px solid #000000;
     border-radius: 8px;
     font-size: 16px;
+    background-color: #f0f0f0; /* Color de fondo del campo */
+    color: #000000; /* Añade esta línea para el color del texto (negro) */
   }
+  
+
   
   .login-card button {
     width: 100%;
@@ -45,6 +49,6 @@
   }
   
   .login-card button:hover {
-    background-color: #e65c00;
+    background-color: #000000;
   }
   

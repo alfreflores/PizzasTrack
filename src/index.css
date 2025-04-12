@@ -1,3 +1,4 @@
+/* index.css */
 @import "tailwindcss";
 
 :root {
@@ -15,6 +16,24 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html, body, #root { /* Ajusta #root si tu ID de app es diferente */
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; /* Buena práctica */
+}
+
+*, *::before, *::after {
+  box-sizing: inherit; /* Hereda border-box a todos los elementos */
+}
+
+/* Eliminar centrado y restricciones innecesarias */
+body {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Resto de los estilos sin cambios */
 a {
   font-weight: 500;
   color: #646cff;
@@ -22,14 +41,6 @@ a {
 }
 a:hover {
   color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
 }
 
 h1 {
