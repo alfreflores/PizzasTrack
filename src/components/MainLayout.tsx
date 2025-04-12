@@ -9,11 +9,12 @@ interface Props {
 
 const MainLayout = ({ children }: Props) => {
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-gray-100"> {/* Fondo gris claro general */}
       <Sidebar />
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 overflow-hidden"> {/* Evita doble scrollbar */}
         <Navbar />
-        <main className="flex-1 bg-gray-100 p-4 overflow-y-auto">
+        {/* Área principal con padding y scroll si es necesario */}
+        <main className="flex-1 p-4 overflow-y-auto">
           {children}
         </main>
       </div>
@@ -22,4 +23,3 @@ const MainLayout = ({ children }: Props) => {
 };
 
 export default MainLayout;
-
