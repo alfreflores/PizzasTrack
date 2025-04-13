@@ -1,21 +1,45 @@
 // src/components/MainLayout.tsx
-
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import { Routes, Route } from 'react-router-dom'; // <-- Importar Routes y Route
 
-interface Props {
-  children: React.ReactNode;
+// --- Importar las páginas ---
+import Dashboard from '../pages/Dashboard';
+import UsuariosPage from '../pages/UsuariosPage';
+import PedidosPage from '../pages/PedidosPage';
+import ProveedoresPage from '../pages/ProveedoresPage';
+
+// --- Modificar MainLayoutProps (quitar children) ---
+interface MainLayoutProps {
+  // children: React.ReactNode; // <-- Ya no se necesita
+  userName: string;
+  userRole: string;
+  userImageUrl?: string | null;
+  onLogout: () => void;
 }
 
-const MainLayout = ({ children }: Props) => {
+// --- Modificar el componente ---
+const MainLayout = ({ userName, userRole, userImageUrl, onLogout }: MainLayoutProps) => {
   return (
-    <div className="flex h-screen bg-gray-100"> {/* Fondo gris claro general */}
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden"> {/* Evita doble scrollbar */}
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar
+        userName={userName}
+        userRole={userRole}
+        userImageUrl={userImageUrl}
+        onLogout={onLogout}
+      />
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
-        {/* Área principal con padding y scroll si es necesario */}
+        {/* --- Área principal ahora define las rutas --- */}
         <main className="flex-1 p-4 overflow-y-auto">
-          {children}
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/usuarios" element={<UsuariosPage />} />
+            <Route path="/pedidos" element={<PedidosPage />} />
+            <Route path="/proveedores" element={<ProveedoresPage />} />
+            {/* Opcional: Ruta para páginas no encontradas */}
+            <Route path="*" element={<div>404 - Página no encontrada</div>} />
+          </Routes>
         </main>
       </div>
     </div>
