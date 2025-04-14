@@ -1,78 +1,65 @@
 // src/components/Sidebar.tsx
-import React from 'react'; // Aunque no se use explícitamente, es buena práctica mantenerlo por claridad o si añades hooks después. Si tu linter lo permite, puedes quitarlo.
-import { NavLink } from 'react-router-dom'; // Importar NavLink
+import React, { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
-  UserIcon,
   ShoppingBagIcon,
-  TruckIcon,
-  PowerIcon
+  PowerIcon,
+  ArchiveBoxIcon,
+  ChartBarIcon,
+  UserGroupIcon, // Para Contactos
+  ChevronDownIcon,
+  ChevronRightIcon,
+  Cog6ToothIcon, // Para Gestión
+  UserCircleIcon, // Para Usuarios (o UserGroupIcon)
 } from '@heroicons/react/24/outline';
 
-// Interfaz para las props de cada elemento del menú
+// Interfaz SidebarItemProps (sin cambios)
 interface SidebarItemProps {
   icon: React.ElementType;
   label: string;
-  to?: string; // Ruta a la que enlaza (opcional para logout)
-  isLogout?: boolean; // Indica si es el botón de logout
-  onClick?: () => void; // Función para el clic (usado en logout)
+  to: string;
+  isSubItem?: boolean;
 }
 
-// Componente para cada elemento individual del menú
-function SidebarItem({ icon: Icon, label, to, isLogout = false, onClick }: SidebarItemProps) {
-  // Clases base reutilizables
-  const baseContainerClasses = `flex items-center gap-3 px-4 py-1.5 rounded-lg cursor-pointer transition w-full text-left`;
+// Componente SidebarItem (sin cambios recientes)
+function SidebarItem({ icon: Icon, label, to, isSubItem = false }: SidebarItemProps) {
+  const baseContainerClasses = `flex items-center gap-3 px-4 py-2 cursor-pointer transition w-full text-left rounded-lg`;
   const baseIconClasses = `w-5 h-5 flex-shrink-0`;
   const baseLabelClasses = `font-medium`;
-
-  // Renderizado especial para el botón de logout
-  if (isLogout) {
-    const logoutContainerClasses = `${baseContainerClasses} bg-black text-red-500 hover:bg-gray-800`;
-    const logoutIconClasses = `${baseIconClasses} text-red-500`;
-    const logoutLabelClasses = `${baseLabelClasses} text-red-500`;
-    return (
-      <button className={logoutContainerClasses} onClick={onClick}>
-        <Icon className={logoutIconClasses} aria-hidden="true" />
-        <span className={logoutLabelClasses}>{label}</span>
-      </button>
-    );
-  }
-
-  // Renderizado para elementos de navegación usando NavLink
-  // Asegurarse de que 'to' exista para elementos de navegación
-  if (!to) {
-    console.error("SidebarItem requiere la prop 'to' para elementos de navegación.");
-    return null; // Evita renderizar si falta la ruta
-  }
+  const subItemIndentClass = isSubItem ? 'pl-8' : '';
 
   return (
     <NavLink
       to={to}
-      end // Importante para que la ruta "/" no se marque como activa para "/usuarios", etc.
+      // --- ACTUALIZADO: end solo para '/' y la ruta exacta de Usuarios ---
+      // Esto asegura que /usuarios no esté activo cuando /usuarios/contactos lo esté
+      end={to === '/' || to === '/usuarios'}
       className={({ isActive }) => {
-        // Calcula SOLO las clases del contenedor NavLink
-        let containerClasses = baseContainerClasses;
-
+        let containerClasses = `${baseContainerClasses} ${subItemIndentClass}`;
         if (isActive) {
-          // Estilos cuando el enlace está activo
-          containerClasses += ` bg-blue-100 text-black border-l-4 border-blue-500`;
+          // Estilo activo para NavLink (fondo azul claro, borde izquierdo o redondeado)
+          containerClasses += ` bg-blue-100 border-blue-500 ${!isSubItem ? 'border-l-4 rounded-r-lg rounded-l-none' : 'rounded-lg'}`;
         } else {
-          // Estilos cuando el enlace está inactivo
-          containerClasses += ` bg-black text-white hover:bg-gray-800`;
+          // Estilo inactivo para NavLink (texto gris, hover gris claro)
+          containerClasses += ` text-gray-700 hover:bg-gray-100`;
         }
-        // Devuelve las clases calculadas para el NavLink
         return containerClasses;
       }}
     >
-      {/* Función hija para renderizar el contenido interno (icono y texto) */}
-      {/* Aquí sí usamos isActive para aplicar clases específicas al icono y al texto */}
       {({ isActive }) => (
         <>
           <Icon
-            className={`${baseIconClasses} ${isActive ? 'text-blue-600' : 'text-blue-400'}`}
+            className={`${baseIconClasses} ${
+              // Icono azul oscuro si activo, azul claro si inactivo (o subitem azul medio)
+              isActive ? 'text-blue-600' : (isSubItem ? 'text-blue-500' : 'text-blue-400')
+            }`}
             aria-hidden="true"
           />
-          <span className={`${baseLabelClasses} ${isActive ? 'text-black' : 'text-white'}`}>
+          <span className={`${baseLabelClasses} ${
+            // Texto azul oscuro si activo, gris si inactivo
+            isActive ? 'text-blue-800' : 'text-gray-700'
+          }`}>
             {label}
           </span>
         </>
@@ -81,66 +68,132 @@ function SidebarItem({ icon: Icon, label, to, isLogout = false, onClick }: Sideb
   );
 }
 
-// Interfaz para las props del componente Sidebar principal
+
+// Interfaz SidebarProps (sin cambios)
 interface SidebarProps {
   userName: string;
   userRole: string;
-  userImageUrl?: string | null; // URL de la imagen del usuario (opcional)
-  onLogout: () => void; // Función para manejar el cierre de sesión
+  userImageUrl?: string | null;
+  onLogout: () => void;
 }
 
-// Función auxiliar para obtener iniciales del nombre
+// Función getInitials (sin cambios)
 const getInitials = (name: string): string => {
-  if (!name) return '?'; // Retorna '?' si no hay nombre
+  if (!name) return '?';
   const names = name.trim().split(' ');
   if (names.length === 1) {
-    // Si solo hay un nombre/palabra, toma las dos primeras letras
     return names[0].substring(0, 2).toUpperCase();
   }
-  // Si hay más de un nombre, toma la primera letra del primero y del último
   return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 };
 
-// Componente principal del Sidebar
+// Componente principal del Sidebar ACTUALIZADO
 export default function Sidebar({ userName, userRole, userImageUrl, onLogout }: SidebarProps) {
-  return (
-    // Contenedor principal del Sidebar
-    <aside className="w-64 h-screen bg-white flex flex-col shadow-lg flex-shrink-0"> {/* Añadido flex-shrink-0 */}
+  const [isGestionOpen, setIsGestionOpen] = useState(false);
+  const location = useLocation();
+  // isGestionActive determina si estamos en cualquier ruta bajo /usuarios
+  const isGestionSectionActive = location.pathname.startsWith('/usuarios');
 
-      {/* Sección del Encabezado: Información del Usuario */}
+  useEffect(() => {
+    // Si salimos de la sección /usuarios, cerramos el desplegable de Gestión
+    if (!isGestionSectionActive) {
+      setIsGestionOpen(false);
+    }
+    // Opcional: Abrir si se navega a /usuarios o /usuarios/contactos y no estaba abierto
+    // else if (isGestionSectionActive && !isGestionOpen) {
+    //   setIsGestionOpen(true);
+    // }
+  }, [location.pathname, isGestionSectionActive]); // Dependencias correctas
+
+  // Clases base para el botón desplegable: Fondo siempre blanco
+  const dropdownButtonBaseClasses = `flex items-center justify-between gap-3 px-4 py-2 cursor-pointer transition w-full text-left rounded-lg bg-white hover:bg-white`;
+
+  return (
+    <aside className="w-64 h-screen bg-white flex flex-col shadow-lg flex-shrink-0">
+      {/* Sección del Encabezado (sin cambios) */}
       <div className="flex items-start gap-3 p-4 border-b border-gray-200">
-        {/* Contenedor para la Imagen o Iniciales */}
-        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xl mt-1 overflow-hidden flex-shrink-0 bg-gray-300"> {/* Fondo gris por defecto */}
+         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xl mt-1 overflow-hidden flex-shrink-0 bg-gray-300">
           {userImageUrl ? (
-            // Muestra la imagen si existe la URL
             <img src={userImageUrl} alt={userName} className="w-full h-full object-cover" />
           ) : (
-            // Muestra las iniciales si no hay imagen
-            <span className="w-full h-full bg-blue-500 flex items-center justify-center select-none"> {/* Fondo azul para iniciales, select-none para evitar selección */}
+            <span className="w-full h-full bg-blue-500 flex items-center justify-center select-none">
               {getInitials(userName)}
             </span>
           )}
         </div>
-        {/* Contenedor para el Nombre y Rol */}
         <div className="flex flex-col">
-          <h1 className="text-lg font-bold text-black leading-tight">{userName}</h1>
+          <h1 className="text-lg font-bold text-gray-800 leading-tight">{userName}</h1>
           <p className="text-sm text-gray-500 mt-1">{userRole}</p>
         </div>
       </div>
 
-      {/* Sección de Navegación Principal */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto"> {/* Añadido overflow-y-auto si el menú crece */}
-        {/* Elementos del menú usando SidebarItem con la prop 'to' */}
+      {/* Sección de Navegación Principal ACTUALIZADA */}
+      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
+        {/* --- Inicio usa NavLink y se resalta automáticamente --- */}
         <SidebarItem icon={HomeIcon} label="Inicio" to="/" />
-        <SidebarItem icon={UserIcon} label="Usuarios" to="/usuarios" />
+
+        {/* --- Elemento Desplegable: Gestión --- */}
+        <div>
+          <button
+            // Usa las clases base definidas (fondo siempre blanco)
+            className={dropdownButtonBaseClasses}
+            onClick={() => setIsGestionOpen(!isGestionOpen)}
+            aria-expanded={isGestionOpen}
+          >
+            <span className="flex items-center gap-3">
+              {/* Icono y texto cambian de color según isGestionSectionActive */}
+              <Cog6ToothIcon className={`w-5 h-5 flex-shrink-0 ${
+                isGestionSectionActive ? 'text-blue-600' : 'text-blue-400'
+              }`} />
+              <span className={`font-medium ${
+                isGestionSectionActive ? 'text-blue-800' : 'text-gray-700'
+              }`}>Gestión</span>
+            </span>
+            {/* Icono de flecha */}
+            {isGestionOpen ? (
+              <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronRightIcon className="w-4 h-4 text-gray-500" />
+            )}
+          </button>
+
+          {/* --- Contenido desplegable ACTUALIZADO --- */}
+          {isGestionOpen && (
+            <div className="mt-1 space-y-1">
+              {/* --- Enlace a Usuarios (usa UsuariosPage) --- */}
+              <SidebarItem
+                icon={UserCircleIcon} // O UserGroupIcon
+                label="Usuarios"
+                to="/usuarios" // <-- Ruta principal de usuarios
+                isSubItem
+              />
+              {/* --- Enlace a Contactos (sin cambios) --- */}
+              <SidebarItem
+                icon={UserGroupIcon} // Icono diferente para distinguir
+                label="Contactos"
+                to="/usuarios/contactos"
+                isSubItem
+              />
+            </div>
+          )}
+        </div>
+
+        {/* --- Otros Elementos Principales (usan NavLink) --- */}
         <SidebarItem icon={ShoppingBagIcon} label="Pedidos" to="/pedidos" />
-        <SidebarItem icon={TruckIcon} label="Proveedores" to="/proveedores" />
+        <SidebarItem icon={ArchiveBoxIcon} label="Almacen" to="/almacen" />
+        <SidebarItem icon={ChartBarIcon} label="Reportes" to="/reportes" />
+
       </nav>
 
-      {/* Sección del Pie: Botón de Cerrar Sesión */}
-      <div className="mt-auto p-3 border-t border-gray-200"> {/* Añadido borde superior opcional */}
-         {/* Botón de logout usando SidebarItem con 'isLogout' y 'onClick' */}
-         <SidebarItem icon={PowerIcon} label="Cerrar sesión" isLogout onClick={onLogout} />
+      {/* Sección del Pie: Botón de Cerrar Sesión (sin cambios) */}
+      <div className="mt-auto p-3 border-t border-gray-200">
+         <button
+            className="flex items-center gap-3 px-4 py-2 cursor-pointer transition w-full text-left rounded-lg text-red-600 hover:bg-red-50"
+            onClick={onLogout}
+          >
+            <PowerIcon className="w-5 h-5 flex-shrink-0 text-red-600" aria-hidden="true" />
+            <span className="font-medium text-red-600">Cerrar sesión</span>
+         </button>
       </div>
     </aside>
   );

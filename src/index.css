@@ -8,7 +8,7 @@
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #242424; /* Mantenemos el fondo general */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -16,24 +16,23 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-html, body, #root { /* Ajusta #root si tu ID de app es diferente */
+html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
-  box-sizing: border-box; /* Buena práctica */
+  box-sizing: border-box;
 }
 
 *, *::before, *::after {
-  box-sizing: inherit; /* Hereda border-box a todos los elementos */
+  box-sizing: inherit;
 }
 
-/* Eliminar centrado y restricciones innecesarias */
 body {
   min-height: 100vh;
   width: 100%;
+  /* No establezcas background-color aquí si quieres que :root lo controle */
 }
 
-/* Resto de los estilos sin cambios */
 a {
   font-weight: 500;
   color: #646cff;
@@ -51,31 +50,36 @@ h1 {
 button {
   border-radius: 8px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
+  padding: 0.6em 1.2em; /* Puedes mantener o ajustar el padding si lo deseas */
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  /* background-color: #ffffff; */ /* <-- ELIMINADO */
   cursor: pointer;
   transition: border-color 0.25s;
+  /* Considera añadir estilos base de Tailwind o dejar que Preflight actúe */
+  /* Por ejemplo, podrías querer un color de texto base aquí si no lo hereda bien */
+  /* color: inherit; */
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #646cff; /* Puedes mantener esto o manejarlo con Tailwind */
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 4px auto -webkit-focus-ring-color; /* Estilo de foco por defecto */
 }
 
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
-    background-color: #ffffff;
+    background-color: #ffffff; /* Fondo general para modo light */
   }
   a:hover {
     color: #747bff;
   }
-  button {
-    background-color: #f9f9f9;
-  }
+  /* Ya no necesitamos la regla específica para button aquí */
+  /* button { */
+    /* background-color: #f9f9f9; */ /* <-- ELIMINADO */
+  /* } */
 }
+

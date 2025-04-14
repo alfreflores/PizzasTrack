@@ -1,9 +1,14 @@
 // src/components/Navbar.tsx
 import React, { useState, useEffect } from 'react';
-// Cambiamos la importación del ícono de batería por el de campana
 import { BellIcon } from '@heroicons/react/24/outline';
 
-const Navbar: React.FC = () => {
+// --- Añadir interfaz para las props ---
+interface NavbarProps {
+  title: string; // Prop para recibir el título dinámico
+}
+
+// --- Modificar la firma del componente para aceptar props ---
+const Navbar: React.FC<NavbarProps> = ({ title }) => { // Desestructurar title de las props
   const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
@@ -21,17 +26,14 @@ const Navbar: React.FC = () => {
 
   return (
     <header className="w-full h-16 flex items-center justify-between px-4 bg-white shadow-md z-10">
-      {/* Título a la izquierda */}
-      <h2 className="text-xl font-bold text-gray-800">Pizza Kristal</h2>
+      {/* --- Usar el título recibido por props --- */}
+      <h2 className="text-xl font-bold text-gray-800">{title}</h2>
 
-      {/* Icono de campana y hora a la derecha */}
+      {/* Icono de campana y hora a la derecha (sin cambios) */}
       <div className="flex items-center gap-3 text-gray-600">
-        {/* Usamos el ícono de campana */}
         <button className="relative p-1 rounded-full text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-          <span className="sr-only">Ver notificaciones</span> {/* Accesibilidad */}
+          <span className="sr-only">Ver notificaciones</span>
           <BellIcon className="h-6 w-6" aria-hidden="true" />
-          {/* Opcional: Añadir un punto rojo para notificaciones no leídas */}
-          {/* <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" /> */}
         </button>
         <span className="font-medium">{currentTime}</span>
       </div>

@@ -1,9 +1,8 @@
 // src/controllers/AuthController.tsx
 import React, { useState, useEffect } from 'react';
-import Login from '../components/Login';
-import MainLayout from '../components/MainLayout';
+import MainLayout from '../components/MainLayout'; // Ajusta la ruta si es necesario
 
-// Define la estructura del usuario
+// Interfaz para los datos del usuario (puedes ajustarla según tus necesidades)
 interface User {
   name: string;
   role: string;
@@ -11,104 +10,124 @@ interface User {
 }
 
 const AuthController: React.FC = () => {
-  // Estado para saber si está autenticado
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  // Estado para guardar los datos del usuario
-  const [user, setUser] = useState<User | null>(null);
-  // Estado para saber si estamos verificando la sesión inicial
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Estado para guardar los datos del usuario autenticado
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    // Intentar leer el usuario desde localStorage al iniciar
+    const storedUser = localStorage.getItem('currentUser');
+    try {
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (error) {
+      console.error("Error al parsear datos de usuario guardados:", error);
+      localStorage.removeItem('currentUser'); // Limpiar si está corrupto
+      return null;
+    }
+  });
 
-  // useEffect para verificar la sesión al cargar la aplicación
+  // Estados para los campos del formulario de login
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  // Efecto para guardar/eliminar el usuario en localStorage cuando cambie el estado
   useEffect(() => {
-    console.log("AuthController: Verificando sesión inicial...");
-    // Intenta leer del localStorage si el usuario ya inició sesión antes
-    const loggedInStatus = localStorage.getItem('isLoggedIn') === 'true';
+    if (currentUser) {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('currentUser');
+    }
+  }, [currentUser]);
 
-    if (loggedInStatus) {
-      console.log("AuthController: Sesión activa encontrada.");
-      // Si estaba logueado, recupera los datos (simulados)
-      const storedUser: User = {
-        name: localStorage.getItem('userName') || 'Usuario Recuperado',
-        role: localStorage.getItem('userRole') || 'Rol Recuperado',
-        imageUrl: localStorage.getItem('userImageUrl') || null,
+  // Función para manejar el intento de inicio de sesión
+  const handleLogin = (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(''); // Limpiar errores previos
+
+    // --- SIMULACIÓN DE AUTENTICACIÓN ---
+    // Aquí deberías reemplazar esto con tu lógica real de autenticación
+    // (por ejemplo, una llamada a tu API backend)
+    if (username === 'admin' && password === 'password') {
+      // Si la autenticación es exitosa:
+      const loggedInUser: User = {
+        name: 'Usuario Admin', // Reemplazar con datos reales
+        role: 'Administrador', // Reemplazar con datos reales
+        imageUrl: null,        // Opcional: URL de imagen
       };
-      setUser(storedUser);
-      setIsAuthenticated(true);
+      setCurrentUser(loggedInUser); // Actualizar el estado con los datos del usuario
     } else {
-      console.log("AuthController: No hay sesión activa.");
+      // Si la autenticación falla:
+      setError('Usuario o contraseña incorrectos.');
     }
-    // Termina la carga inicial
-    setIsLoading(false);
-  }, []); // El array vacío [] asegura que esto se ejecute solo una vez al montar
-
-  // Función que se llama desde Login cuando el login es exitoso
-  const handleLoginSuccess = () => {
-    console.log("AuthController: Login exitoso procesado.");
-    // --- Simulación: Datos del usuario después del login ---
-    // En una app real, estos datos vendrían de la respuesta del API
-    const loggedInUser: User = {
-      name: 'Admin Kristal', // Puedes cambiar esto o obtenerlo del login
-      role: 'Administrador',
-      imageUrl: null, // O una URL si la tienes
-    };
-    // --- Fin Simulación ---
-
-    // Guarda el estado en localStorage (simulación de sesión)
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userName', loggedInUser.name);
-    localStorage.setItem('userRole', loggedInUser.role);
-    if (loggedInUser.imageUrl) {
-      localStorage.setItem('userImageUrl', loggedInUser.imageUrl);
-    } else {
-      localStorage.removeItem('userImageUrl'); // Asegura limpiar si no hay imagen
-    }
-
-    // Actualiza el estado de React
-    setUser(loggedInUser);
-    setIsAuthenticated(true);
+    // --- FIN SIMULACIÓN ---
   };
 
-  // Función que se llama desde Sidebar para cerrar sesión
+  // Función para manejar el cierre de sesión (se pasará a MainLayout)
   const handleLogout = () => {
-    console.log("AuthController: Logout procesado.");
-    // Limpia localStorage
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userImageUrl');
-
-    // Limpia el estado de React
-    setUser(null);
-    setIsAuthenticated(false);
+    setCurrentUser(null); // Limpiar el estado del usuario
+    // localStorage se limpiará automáticamente por el useEffect
   };
 
-  // Muestra un mensaje mientras se verifica la sesión inicial
-  if (isLoading) {
-    return <div>Verificando sesión...</div>;
+  // --- RENDERIZADO CONDICIONAL ---
+  if (currentUser) {
+    // Si hay un usuario autenticado (currentUser no es null), renderiza MainLayout
+    return (
+      <MainLayout
+        userName={currentUser.name}
+        userRole={currentUser.role}
+        userImageUrl={currentUser.imageUrl}
+        onLogout={handleLogout} // Pasar la función de logout
+      />
+    );
+  } else {
+    // Si no hay usuario autenticado, renderiza el formulario de Login
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="p-8 bg-white rounded shadow-md w-full max-w-sm">
+          <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Iniciar Sesión</h2>
+          {/* Puedes añadir un logo aquí si quieres */}
+          <form onSubmit={handleLogin}>
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
+                Usuario
+              </label>
+              <input
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                id="username"
+                type="text"
+                placeholder="Tu usuario"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
+            <div className="mb-6">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+                Contraseña
+              </label>
+              <input
+                className={`shadow appearance-none border ${error ? 'border-red-500' : ''} rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline`}
+                id="password"
+                type="password"
+                placeholder="******************"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              {error && <p className="text-red-500 text-xs italic">{error}</p>}
+            </div>
+            <div className="flex items-center justify-between">
+              <button
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+                type="submit"
+              >
+                Entrar
+              </button>
+            </div>
+            {/* Puedes añadir enlaces como "¿Olvidaste tu contraseña?" aquí */}
+          </form>
+        </div>
+      </div>
+    );
   }
-
-  // Si no está autenticado, muestra el componente Login
-  if (!isAuthenticated) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  // Si está autenticado pero por alguna razón user es null (no debería pasar aquí)
-  if (!user) {
-     console.error("Error: Autenticado pero sin datos de usuario.");
-     // Podrías intentar recargar o mostrar un error genérico
-     handleLogout(); // Forzar logout como medida de seguridad/recuperación
-     return <div>Error de estado, por favor reintente el login.</div>;
-  }
-
-  // Si está autenticado y tenemos datos de usuario, muestra MainLayout
-  return (
-    <MainLayout
-      userName={user.name}
-      userRole={user.role}
-      userImageUrl={user.imageUrl}
-      onLogout={handleLogout}
-    />
-  );
 };
 
 export default AuthController;
