@@ -1,6 +1,6 @@
 // src/components/Login.tsx
 import React, { useState } from 'react';
-import '../styles/login.css';
+import './styles/login.css';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -12,7 +12,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === '1234') {
+    if (username === 'admin' && password === '12345') {
       onLoginSuccess();
     } else {
       alert('Credenciales incorrectas');
