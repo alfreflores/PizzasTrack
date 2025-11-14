@@ -1,4 +1,4 @@
-// src/services/contactService.ts
+// src/services/contactService.tsx
 
 const API_URL_CONTACTS = 'http://localhost/Pizzatrack/backend/api/contacts/index.php'; 
 
