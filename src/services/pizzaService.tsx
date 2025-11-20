@@ -6,7 +6,7 @@ const API_URL_ALMACEN = 'http://localhost/Pizzatrack/backend/api/almacen/index.p
 
 // --- INTERFACES ---
 
-// Detalle de ingredientes para una receta
+// Detalle de ingredientes para una receta (Se mantiene)
 export interface RecetaIngrediente {
     id_producto: number;
     producto_nombre: string;
@@ -14,7 +14,7 @@ export interface RecetaIngrediente {
     unidad_medida: string;
 }
 
-// Estructura de la Receta que obtenemos del backend
+// Estructura de la Receta que obtenemos del backend (Se mantiene)
 export interface RecetaPizza {
     id_receta: number;
     nombre: string;
@@ -23,40 +23,53 @@ export interface RecetaPizza {
     ingredientes: RecetaIngrediente[];
 }
 
-// Estructura del Item de Venta para enviar al backend
+// Estructura de la Receta para CREACIÓN/ACTUALIZACIÓN (Se mantiene)
+export interface RecetaPayload {
+    id_receta?: number;
+    nombre: string;
+    tamano: 'Mediana' | 'Grande';
+    precio: number;
+    ingredientes: { id_producto: number; cantidad_uso: number }[]; 
+}
+
+// Estructura del Item de Venta para enviar al backend (Se mantiene)
 export interface VentaItem {
     id_receta: number;
     quantity: number;
     price: number;
 }
 
-// Estructura de la Receta para CREACIÓN/ACTUALIZACIÓN (POST/PUT)
-export interface RecetaPayload {
-    id_receta?: number;
+
+// --- NUEVAS INTERFACES PARA REPORTE DIARIO ---
+export interface DetalleVentaDia {
+    total_vendido: number;
     nombre: string;
     tamano: 'Mediana' | 'Grande';
-    precio: number;
-    // Solo necesitamos ID y cantidad de uso para enviar al backend
-    ingredientes: { id_producto: number; cantidad_uso: number }[]; 
 }
 
-// Estructura de la Respuesta de la API
+export interface ReporteDiarioData {
+    totalVentas: number;
+    detalle: DetalleVentaDia[];
+}
+// --- FIN NUEVAS INTERFACES ---
+
+// Estructura de la Respuesta de la API (Se mantiene)
 interface ApiResponse<T = unknown> {
     success: boolean;
     data?: T;
     message: string;
 }
 
-// Stock del almacén simplificado para verificación del frontend
+// Stock del almacén simplificado para verificación del frontend (Se mantiene)
 export interface StockItem {
     id: number;
     producto: string;
-    items: number; // Cantidad disponible en stock
+    items: number; 
     especificacion: string;
     estatus: ProductEstatus;
 }
 
-// Interfaz para la respuesta cruda del API de Almacén
+// Interfaz para la respuesta cruda del API de Almacén (Se mantiene)
 interface RawStockItem {
     id: string | number;
     producto: string;
@@ -67,7 +80,7 @@ interface RawStockItem {
 }
 
 
-// --- LECTURA (GET) - RECETAS ---
+// --- LECTURA (GET) - RECETAS (Se mantiene) ---
 export const getRecetas = async (): Promise<ApiResponse<RecetaPizza[]>> => {
     try {
         const response = await fetch(API_URL_PIZZAS);
@@ -83,7 +96,25 @@ export const getRecetas = async (): Promise<ApiResponse<RecetaPizza[]>> => {
     }
 };
 
-// --- LECTURA (GET) - STOCK SIMPLIFICADO ---
+// --- LECTURA (GET) - REPORTE DIARIO (NUEVO) ---
+export const getVentasDiarias = async (): Promise<ApiResponse<ReporteDiarioData>> => {
+    try {
+        // Llama al API con el parámetro para obtener el reporte diario
+        const response = await fetch(`${API_URL_PIZZAS}?action=daily_report`);
+        const data = await response.json();
+        
+        if (data.success) {
+            // Aseguramos que el tipo de data.data coincida con ReporteDiarioData
+            return { success: true, data: data.data as ReporteDiarioData, message: data.message };
+        }
+        return data as ApiResponse<ReporteDiarioData>;
+    } catch (error) {
+        console.error("Error en getVentasDiarias:", error);
+        return { success: false, message: 'Fallo al cargar el reporte de ventas del día.' };
+    }
+};
+
+// --- LECTURA (GET) - STOCK SIMPLIFICADO (Se mantiene) ---
 export const getStockForPizzas = async (): Promise<ApiResponse<StockItem[]>> => {
     try {
         const response = await fetch(API_URL_ALMACEN);
@@ -107,7 +138,7 @@ export const getStockForPizzas = async (): Promise<ApiResponse<StockItem[]>> => 
 };
 
 
-// --- VENTA (POST) ---
+// --- VENTA (POST) (Se mantiene) ---
 export const processPizzaSale = async (items: VentaItem[]): Promise<ApiResponse<{ id_venta: number }>> => {
     try {
         const response = await fetch(API_URL_PIZZAS, {
@@ -129,13 +160,13 @@ export const processPizzaSale = async (items: VentaItem[]): Promise<ApiResponse<
 };
 
 
-// --- CRUD DE RECETAS ---
+// --- CRUD DE RECETAS (Se mantienen) ---
 
 // CREAR RECETA (POST)
 export const createReceta = async (receta: RecetaPayload): Promise<ApiResponse<{ id_receta: number }>> => {
     try {
         const response = await fetch(API_URL_PIZZAS, {
-            method: 'POST', // Reutilizamos POST en la API
+            method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(receta), 
         });

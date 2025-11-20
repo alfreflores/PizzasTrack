@@ -1,7 +1,10 @@
 // src/pages/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { TruckIcon, UserCircleIcon, ShoppingBagIcon, CurrencyDollarIcon, ClockIcon } from '@heroicons/react/24/outline'; // Usamos íconos de Heroicons
+// CORRECCIÓN: Cambiamos 'X' por 'XMarkIcon' para Heroicons.
+// Las demás importaciones se mantienen igual:
+import { TruckIcon, UserCircleIcon, ShoppingBagIcon, CurrencyDollarIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline'; 
+import { getVentasDiarias, ReporteDiarioData, DetalleVentaDia } from '../services/pizzaService'; 
 
 // --- Definiciones de Íconos para Claridad (Usamos Heroicons) ---
 const PedidosIcon: React.FC<{ className?: string }> = ({ className = "text-gray-600" }) => (
@@ -26,13 +29,14 @@ const PizzaIcon: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) 
 );
 
 
-// --- TIPOS DE DATOS (Se pueden mover a un archivo de servicio de Dashboard si es necesario) ---
+// --- TIPOS DE DATOS ---
 interface DashboardData {
   pedidosCount: number;
   proveedoresCount: number;
   empleadosCount: number;
-  ventasTotal: number;
+  ventasTotal: number; // Suma total de ventas del día
   loading: boolean;
+  ventasDiariasReporte: ReporteDiarioData | null; // Nuevo campo para el reporte detallado
 }
 
 // Datos de ejemplo para la sección de reportes en el Dashboard
@@ -50,20 +54,21 @@ const reportesResumidosMock: ReporteResumido[] = [
   { id: 3, usuario: "Bruce Fox (Cajero)", asunto: "Reporte de Usuario", hora: "01:45 PM", status: 'respondido' },
 ];
 
-// --- COMPONENTE InfoCard MEJORADO CON LINK ---
+// --- COMPONENTE InfoCard MEJORADO CON LINK/BUTTON ---
 interface InfoCardProps {
   title: string;
   value: string | number;
   icon: React.ReactNode;
-  to: string; // Nueva propiedad para la ruta de destino
+  to?: string; // Opcional si es un Link
+  onClick?: () => void; // Nuevo para manejar el modal
   bgColor?: string; 
   loading: boolean;
 }
 
-const InfoCard: React.FC<InfoCardProps> = ({ title, value, icon, to, loading, bgColor = "bg-white" }) => {
-  return (
-    <Link to={to} className="block group">
-        <div className={`${bgColor} p-6 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 transform group-hover:scale-[1.02] group-hover:shadow-xl cursor-pointer`}>
+// Convertimos InfoCard para que pueda ser tanto Link como Button
+const InfoCard: React.FC<InfoCardProps> = ({ title, value, icon, to, onClick, loading, bgColor = "bg-white" }) => {
+    const content = (
+        <div className={`${bgColor} p-6 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 transform group-hover:scale-[1.02] group-hover:shadow-xl ${to || onClick ? 'cursor-pointer' : ''}`}>
           <div>
             <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">{title}</p>
             <p className="text-3xl font-semibold text-gray-800 mt-1">
@@ -74,34 +79,54 @@ const InfoCard: React.FC<InfoCardProps> = ({ title, value, icon, to, loading, bg
             {icon}
           </div>
         </div>
-    </Link>
-  );
+    );
+    
+    if (to) {
+        return (
+            <Link to={to} className="block group">
+                {content}
+            </Link>
+        );
+    }
+
+    // Si tiene onClick (Ventas), lo hacemos un botón para el modal
+    return (
+        <button onClick={onClick} className="block group w-full text-left" disabled={loading}>
+            {content}
+        </button>
+    );
 };
 
 
-// --- FUNCIÓN DE FETCH SIMULADA (DEBE SER REEMPLAZADA POR TUS SERVICIOS REALES) ---
-// NOTA: Para que esto funcione, debes importar las funciones de tus servicios de PHP:
-// import { getOrders } from '../services/pedidosService';
-// import { getEmpleados } from '../services/userService';
-// import { getProveedores } from '../services/contactService';
-// import { getVentasTotales } from '../services/pizzaService'; // NECESITAS ESTA FUNCIÓN
-
+// --- FUNCIÓN DE FETCH REAL (MOCK DE OTRAS APIS + REAL DE PIZZAS) ---
 const fetchDashboardData = async (): Promise<DashboardData> => {
-    // --- MOCK TEMPORAL DE DATOS REALES ---
-    // ESTOS VALORES SON LOS QUE SE MUESTRAN EN TU IMAGEN ORIGINAL
-    const mockData: DashboardData = {
-        pedidosCount: 2, // Se puede obtener de getOrders().data.length
-        proveedoresCount: 4, // Se puede obtener de getProveedores().data.length
-        empleadosCount: 3, // Se puede obtener de getEmpleados().data.length
-        ventasTotal: 5987.99, // Se puede obtener de getVentasTotales()
-        loading: false,
+    // 1. Datos que DEBEN venir de tus otras APIs (pedidos, usuarios, contactos)
+    // NOTA: Deberás conectar aquí las funciones de tus servicios reales (pedidosService, userService, etc.)
+    const mockCounts = {
+        pedidosCount: 2, // Reemplazar con llamada a getOrders()
+        proveedoresCount: 4, // Reemplazar con llamada a getProveedores()
+        empleadosCount: 3, // Reemplazar con llamada a getEmpleados()
     };
     
-    // Simulación de carga de 500ms
-    await new Promise(resolve => setTimeout(resolve, 500)); 
+    // 2. Obtener Reporte Diario de Ventas de Pizzas (NUEVA FUNCIÓN)
+    const ventasResult = await getVentasDiarias();
     
-    return mockData;
-    // --- FIN MOCK TEMPORAL ---
+    let ventasTotal = 5987.99; // Mantener el mock si la llamada falla, pero usar el resultado
+    let ventasDiariasReporte: ReporteDiarioData | null = null;
+
+    if (ventasResult.success && ventasResult.data) {
+        ventasTotal = ventasResult.data.totalVentas;
+        ventasDiariasReporte = ventasResult.data;
+    } else {
+        console.error("Error al cargar ventas diarias:", ventasResult.message);
+    }
+
+    return {
+        ...mockCounts,
+        ventasTotal: ventasTotal,
+        ventasDiariasReporte: ventasDiariasReporte,
+        loading: false,
+    };
 };
 
 
@@ -112,16 +137,35 @@ const Dashboard: React.FC = () => {
         empleadosCount: 0,
         ventasTotal: 0.00,
         loading: true,
+        ventasDiariasReporte: null,
     });
+    const [mostrarDetalleVentas, setMostrarDetalleVentas] = useState(false);
     
+    // Simulación de la acción de restablecer
+    const handleRestablecerDia = () => {
+        // SIMULACIÓN: Muestra un pop-up y luego resetea los datos en el frontend
+        if (window.confirm("ADVERTENCIA: ¿Está seguro de SIMULAR el restablecimiento (borrado) de las ventas de PIZZAS del día? Esta acción no es reversible en la demo.")) {
+            
+            // Aquí iría una llamada a una nueva API: deleteVentasDiarias()
+            
+            // Simulamos la recarga de datos con total = 0
+            setData(prev => ({
+                ...prev,
+                ventasTotal: 0.00,
+                ventasDiariasReporte: { totalVentas: 0.00, detalle: [] },
+            }));
+            setMostrarDetalleVentas(false);
+            alert("Simulación de Restablecimiento exitosa. Venta Total reseteada a $0.00.");
+        }
+    };
+
     useEffect(() => {
         const loadDashboard = async () => {
             try {
-                const fetchedData = await fetchDashboardData(); // Llama a tu función real
+                const fetchedData = await fetchDashboardData();
                 setData(fetchedData);
             } catch (error) {
                 console.error("Error al cargar datos del Dashboard:", error);
-                // Opcional: Mostrar un error al usuario
                 setData(prev => ({ ...prev, loading: false }));
             }
         };
@@ -149,28 +193,29 @@ const Dashboard: React.FC = () => {
                     title="PEDIDOS SOLICITADOS"
                     value={data.pedidosCount}
                     icon={<PedidosIcon />} 
-                    to="/pedidos" // <-- LINK A PEDIDOS
+                    to="/pedidos" 
                     loading={data.loading}
                 />
                 <InfoCard
                     title="PROVEEDORES"
                     value={data.proveedoresCount}
                     icon={<ProveedoresIcon />}
-                    to="/usuarios/contactos" // <-- LINK A CONTACTOS (donde están los proveedores)
+                    to="/usuarios/contactos" 
                     loading={data.loading}
                 />
                 <InfoCard
                     title="EMPLEADOS"
                     value={data.empleadosCount}
                     icon={<EmpleadosIcon />}
-                    to="/usuarios" // <-- LINK A USUARIOS/EMPLEADOS
+                    to="/usuarios" 
                     loading={data.loading}
                 />
                 <InfoCard
                     title="VENTAS (TOTAL)"
                     value={`$${data.ventasTotal.toFixed(2)}`}
                     icon={<VentasIcon />}
-                    to="/reportes" // <-- LINK A REPORTES/VENTAS
+                    // Usa onClick para abrir el modal
+                    onClick={() => setMostrarDetalleVentas(true)}
                     loading={data.loading}
                 />
             </div>
@@ -203,6 +248,58 @@ const Dashboard: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* ======================================= */}
+            {/* MODAL DETALLE DE VENTAS DIARIAS */}
+            {/* ======================================= */}
+            {mostrarDetalleVentas && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center p-4">
+                    <div className="relative mx-auto p-6 border w-full max-w-lg shadow-lg rounded-md bg-white">
+                        <h3 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2 flex justify-between items-center">
+                            <span>Reporte de Ventas de Pizzas (Día)</span>
+                            {/* CORRECCIÓN: Usamos XMarkIcon */}
+                            <button onClick={() => setMostrarDetalleVentas(false)} className="text-gray-400 hover:text-gray-600 p-1"><XMarkIcon className="w-5 h-5" /></button>
+                        </h3>
+
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center p-3 bg-green-50 rounded-md border border-green-200">
+                                <span className="font-bold text-lg text-green-700">Total Vendido Hoy:</span>
+                                <span className="font-extrabold text-2xl text-green-800">${data.ventasDiariasReporte?.totalVentas.toFixed(2) ?? '0.00'}</span>
+                            </div>
+                            
+                            <h4 className="text-md font-semibold text-gray-700 mt-4">Detalle de Productos Vendidos:</h4>
+                            
+                            <div className="max-h-60 overflow-y-auto border rounded-md">
+                                {data.ventasDiariasReporte?.detalle && data.ventasDiariasReporte.detalle.length > 0 ? (
+                                    data.ventasDiariasReporte.detalle.map((item: DetalleVentaDia, index: number) => (
+                                        <div key={index} className="flex justify-between items-center p-3 border-b last:border-b-0 bg-white hover:bg-gray-50">
+                                            <span className="text-gray-800 font-medium">{item.nombre} ({item.tamano})</span>
+                                            <span className="text-indigo-600 font-bold">{item.total_vendido} unidades</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="p-4 text-center text-gray-500">No hay ventas registradas para el día de hoy.</div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between space-x-3 pt-4 border-t mt-6">
+                            <button 
+                                onClick={handleRestablecerDia}
+                                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition-colors"
+                            >
+                                Restablecer Día (Simular)
+                            </button>
+                            <button 
+                                onClick={() => setMostrarDetalleVentas(false)} 
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md shadow-sm"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -442,17 +442,21 @@ const VentaPizzasPage: React.FC = () => {
             return (
                 <div key={receta.id_receta} className={`flex flex-col p-3 rounded-lg border ${isStockCritical ? 'border-red-400 bg-red-50' : 'bg-gray-50'}`}>
                     
+                    {/* Contenedor de Tamaño/Precio y Botón Ordenar */}
                     <div className="flex justify-between items-center mb-2">
-                        <div className="flex flex-col">
+                        {/* Texto de Tamaño/Precio con MARGEN DERECHO para separar del botón */}
+                        <div className="flex flex-col mr-2"> 
                             <span className="font-bold text-gray-700">{receta.tamano}</span>
                             <span className={`text-sm ${isStockCritical ? 'text-red-600' : 'text-gray-500'}`}>
-                                ${receta.precio.toFixed(2)} {isStockCritical && '(Stock Bajo!)'}
+                                ${receta.precio.toFixed(2)}
                             </span>
+                             {isStockCritical && <span className="text-xs font-medium text-red-600">(Stock Bajo!)</span>}
                         </div>
-                         {/* Botón Ordenar Rápido (Ordena, el primer botón de los 4 conceptuales) */}
+                         {/* Botón Ordenar Rápido: Se hace más pequeño y compacto */}
                         <button 
                             onClick={() => addToCart(receta)} 
-                            className={`py-1 px-3 text-sm font-semibold rounded-lg transition-all duration-200 
+                            // Reducido a py-0.5 px-1.5 (más pequeño)
+                            className={`py-0.5 px-1.5 text-sm font-semibold rounded-md transition-all duration-200 
                                 ${isStockCritical 
                                     ? '!bg-red-500 hover:!bg-red-600 text-white' 
                                     : '!bg-green-600 hover:!bg-green-700 text-white'}`}
@@ -462,35 +466,35 @@ const VentaPizzasPage: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* --- 3 BOTONES DE GESTIÓN RESTANTES --- */}
+                    {/* --- 3 BOTONES DE GESTIÓN RESTANTES (Solo Iconos) --- */}
                     <div className="grid grid-cols-3 gap-1 border-t pt-2 mt-1">
                         
-                        {/* Detalle */}
+                        {/* Detalles: Solo Icono */}
                         <button 
                             title="Ver Detalles"
                             onClick={() => setMostrarDetallesModal(receta)}
-                            className="flex items-center justify-center text-xs py-1 px-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors"
+                            className="flex items-center justify-center p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors"
                         >
-                            <Info className="w-4 h-4" /> Detalles
+                            <Info className="w-4 h-4" /> 
                         </button>
                         
-                        {/* Editar */}
+                        {/* Editar: Solo Icono */}
                         <button 
                             title="Editar Receta"
                             onClick={() => handleOpenEditReceta(receta)}
-                            className="flex items-center justify-center text-xs py-1 px-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-md transition-colors"
+                            className="flex items-center justify-center p-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-md transition-colors"
                         >
-                            <Edit className="w-4 h-4" /> Editar
+                            <Edit className="w-4 h-4" /> 
                         </button>
                         
-                        {/* Eliminar */}
+                        {/* Eliminar: Solo Icono */}
                         <button 
                             title="Eliminar Receta"
                             onClick={() => handleDeleteReceta(receta)}
-                            className="flex items-center justify-center text-xs py-1 px-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors"
+                            className="flex items-center justify-center p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors"
                             disabled={loading}
                         >
-                            <Trash2 className="w-4 h-4" /> Eliminar
+                            <Trash2 className="w-4 h-4" /> 
                         </button>
 
                     </div>
@@ -602,7 +606,8 @@ const VentaPizzasPage: React.FC = () => {
                                     value={recetaFormData.nombre}
                                     onChange={handleRecetaInputChange}
                                     required
-                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                    // *** CORRECCIÓN APLICADA AQUÍ ***
+                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
                                 />
                             </div>
                             <div>
@@ -613,7 +618,7 @@ const VentaPizzasPage: React.FC = () => {
                                     value={recetaFormData.tamano}
                                     onChange={handleRecetaInputChange}
                                     required
-                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900"
                                 >
                                     <option value="Mediana">Mediana</option>
                                     <option value="Grande">Grande</option>
@@ -631,7 +636,8 @@ const VentaPizzasPage: React.FC = () => {
                                     min="0"
                                     step="0.01"
                                     placeholder="0.00"
-                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                    // *** CORRECCIÓN APLICADA AQUÍ ***
+                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
                                 />
                             </div>
                         </div>
@@ -651,7 +657,7 @@ const VentaPizzasPage: React.FC = () => {
                                     value={tempIngrediente.id_producto}
                                     onChange={handleTempIngredienteChange}
                                     required
-                                    // *** APLICAMOS LA CORRECCIÓN DE ESTILO AQUÍ ***
+                                    // CORRECCIÓN DE ESTILO APLICADA
                                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900"
                                 >
                                     <option value="">Selecciona un producto</option>
@@ -671,10 +677,12 @@ const VentaPizzasPage: React.FC = () => {
                                     id="cantidad_uso" 
                                     value={tempIngrediente.cantidad_uso}
                                     onChange={handleTempIngredienteChange}
+                                    required
                                     min="0.01"
                                     step="0.01"
                                     placeholder="0.00"
-                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                    // *** CORRECCIÓN APLICADA AQUÍ ***
+                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
                                 />
                                 <span className="text-xs text-gray-500 mt-1">Unidad: {stock.find(i => i.id === Number(tempIngrediente.id_producto))?.especificacion || 'N/A'}</span>
                             </div>
