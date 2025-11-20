@@ -28,6 +28,7 @@ const AuthController: React.FC = () => {
 
  // Estados para los campos del formulario de login
  const [username, setUsername] = useState('');
+ const [showPassword, setShowPassword] = useState(false);
  const [password, setPassword] = useState('');
  const [error, setError] = useState('');
  const [loading, setLoading] = useState(false); // Nuevo estado para indicar carga
@@ -133,21 +134,38 @@ const AuthController: React.FC = () => {
         required
        />
       </div>
-      <div className="mb-6">
-       <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+    <div className="mb-6">
+    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
         Contraseña
-       </label>
-       <input
-        className={`shadow appearance-none border ${error ? 'border-red-500' : ''} rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline`}
-        id="password"
-        type="password"
-        placeholder="******************"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-       />
-       {error && <p className="text-red-500 text-xs italic">{error}</p>}
-      </div>
+    </label>
+    <div className="relative"> {/* Contenedor relativo para posicionar el ícono */}
+        <input
+            className={`shadow appearance-none border ${error ? 'border-red-500' : ''} rounded w-full py-2 px-3 pr-10 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline`}
+            id="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="******************"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+        />
+        {/* Botón/Icono de Ojo para alternar visibilidad */}
+        <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 top-0 mt-0.5 pr-3 flex items-center text-sm leading-5"
+            aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+        >
+            {showPassword ? (
+                // Ícono de ojo tachado (ocultar)
+                <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.016 10.016 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.274-4.057 5.022-7 9.542-7 1.09 0 2.146.19 3.136.545M19.88 16.88L5.12 2.12M17.414 7.586a2 2 0 112.828 2.828L7.586 17.414a2 2 0 11-2.828-2.828L17.414 7.586z" /></svg>
+            ) : (
+                // Ícono de ojo abierto (mostrar)
+                <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.023 7-9.542 7-4.478 0-8.268-2.943-9.542-7z" /></svg>
+            )}
+        </button>
+    </div>
+    {error && <p className="text-red-500 text-xs italic">{error}</p>}
+</div>
       <div className="flex items-center justify-between">
        <button
         className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}

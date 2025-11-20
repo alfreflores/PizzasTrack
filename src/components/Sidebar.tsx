@@ -12,6 +12,7 @@ import {
   ChevronRightIcon,
   Cog6ToothIcon, // Para Gestión
   UserCircleIcon, // Para Usuarios (o UserGroupIcon)
+  ShoppingCartIcon, // <-- Icono de carrito para ventas
 } from '@heroicons/react/24/outline';
 
 // Interfaz SidebarItemProps (sin cambios)
@@ -131,6 +132,9 @@ export default function Sidebar({ userName, userRole, userImageUrl, onLogout }: 
       <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
         {/* --- Inicio usa NavLink y se resalta automáticamente --- */}
         <SidebarItem icon={HomeIcon} label="Inicio" to="/" />
+        
+        {/* --- NUEVO ITEM: Venta Rápida de Pizzas --- */}
+        <SidebarItem icon={ShoppingCartIcon} label="Venta de Pizzas" to="/ventas" />
 
         {/* --- Elemento Desplegable: Gestión --- */}
         <div>

@@ -139,3 +139,19 @@ export const deleteOrder = async (id: number): Promise<ApiResponse> => {
         return { success: false, message: 'Fallo al eliminar la orden.' };
     }
 };
+// --- FUNCIÓN DE ACTUALIZACIÓN DE ORDEN (PUT) ---
+export const updateOrder = async (order: OrdenCompraData & { id_pedido: number }): Promise<ApiResponse> => {
+    try {
+        const response = await fetch(API_URL_PEDIDOS, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            // Enviamos el objeto completo, incluyendo id_pedido, para que PHP lo reciba
+            body: JSON.stringify(order), 
+        });
+        const data = await response.json();
+        return data as ApiResponse;
+    } catch (error) {
+        console.error("Error en updateOrder:", error);
+        return { success: false, message: 'Fallo al actualizar la orden de compra.' };
+    }
+};

@@ -9,7 +9,7 @@ export interface EmpleadoData {
   id?: number; // <--- DEBE SER OPCIONAL AQUÍ
   nombre: string;
   usuario: string;
-  contrasena: string;
+  contrasena?: string;
   cargo: string;
   correo: string;
   horarioTrabajo: string;
@@ -83,6 +83,28 @@ export const deleteEmpleado = async (id: number): Promise<ApiResponse> => {
 
     } catch (error) {
         console.error("Error en deleteEmpleado:", error);
+        return { success: false, message: 'Fallo de conexión con el servidor.' };
+    }
+};
+
+// ---------------------------
+// D. FUNCIÓN DE ACTUALIZACIÓN (PUT)
+// ---------------------------
+export const updateEmpleado = async (empleado: EmpleadoData & { id: number }): Promise<ApiResponse> => {
+    try {
+        const response = await fetch(API_URL_USERS, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(empleado),
+        });
+
+        const data = await response.json();
+        return data as ApiResponse;
+        
+    } catch (error) {
+        console.error("Error en updateEmpleado:", error);
         return { success: false, message: 'Fallo de conexión con el servidor.' };
     }
 };

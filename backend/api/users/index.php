@@ -111,6 +111,7 @@ if ($method === 'POST') {
 if ($method === 'PUT') {
     $data = json_decode(file_get_contents('php://input'), true);
 
+    // Los datos requeridos son los mismos, excepto que 'id' es obligatorio y 'contrasena' es opcional
     if (!isset($data['id'], $data['nombre'], $data['usuario'], $data['cargo'], $data['correo'], $data['horarioTrabajo'])) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Faltan campos requeridos para actualizar el usuario.']);
@@ -127,7 +128,6 @@ if ($method === 'PUT') {
     try {
         $pdo = connectDB(); 
 
-        // 1. Preparamos la consulta base para actualizar
         $sql = "UPDATE usuarios SET nombre = :nombre, usuario = :usuario, cargo = :cargo, correo_electronico = :correo, horario_trabajo = :horario_trabajo";
         $params = [
             ':id' => $id,
@@ -138,9 +138,9 @@ if ($method === 'PUT') {
             ':horario_trabajo' => $horarioTrabajo
         ];
 
-        // 2. Si se proporciona la contraseña, la actualizamos también
+        // Si se proporciona la contraseña, la actualizamos también
         if (isset($data['contrasena']) && !empty($data['contrasena'])) {
-            $contrasenaHash = $data['contrasena']; // Contraseña plana temporalmente
+            $contrasenaHash = $data['contrasena']; 
             $sql .= ", contrasena_hash = :contrasena_hash";
             $params[':contrasena_hash'] = $contrasenaHash;
         }
@@ -148,8 +148,6 @@ if ($method === 'PUT') {
         $sql .= " WHERE id_usuario = :id";
         
         $stmt = $pdo->prepare($sql);
-
-        // 3. Ejecutamos la actualización
         $stmt->execute($params);
         
         if ($stmt->rowCount() > 0) {
@@ -159,7 +157,6 @@ if ($method === 'PUT') {
                 'message' => 'Empleado actualizado exitosamente.'
             ]);
         } else {
-            // Esto puede ser 0 si no se cambió nada o si el ID no existe
             http_response_code(200);
             echo json_encode([
                 'success' => false, 

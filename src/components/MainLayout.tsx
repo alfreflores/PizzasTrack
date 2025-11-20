@@ -11,6 +11,7 @@ import PedidosPage from '../pages/PedidosPage';
 import AlmacenPage from '../pages/AlmacenPage';
 import ReportesPage from '../pages/ReportesPage.tsx';
 import ContactosPage from '../pages/ContactosPage.tsx';
+import VentaPizzasPage from '../pages/VentaPizzaPage.tsx'; // <-- NUEVA IMPORTACIÓN
 
 interface MainLayoutProps {
   userName: string;
@@ -27,6 +28,7 @@ const pageTitles: { [key: string]: string } = {
   '/usuarios/contactos': 'Contactos',
   '/almacen': 'Gestión de Almacén',
   '/reportes': 'Reportes',
+  '/ventas': 'Venta Rápida de Pizzas', // <-- NUEVA RUTA
 };
 
 const MainLayout = ({ userName, userRole, userImageUrl, onLogout }: MainLayoutProps) => {
@@ -51,12 +53,12 @@ const MainLayout = ({ userName, userRole, userImageUrl, onLogout }: MainLayoutPr
           <Routes>
             {/* --- Ruta raíz apunta a Dashboard --- */}
             <Route path="/" element={<Dashboard />} />
-            {/* <Route path="/" element={<Navigate to="/pedidos" replace />} /> */}{/* <-- Eliminado */}
             <Route path="/pedidos" element={<PedidosPage />} />
             <Route path="/usuarios" element={<UsuariosPage />} />
             <Route path="/usuarios/contactos" element={<ContactosPage />} />
             <Route path="/almacen" element={<AlmacenPage />} />
             <Route path="/reportes" element={<ReportesPage />} />
+            <Route path="/ventas" element={<VentaPizzasPage />} /> {/* <-- NUEVA RUTA DE VENTA */}
             <Route path="*" element={<div>404 - Página no encontrada</div>} />
           </Routes>
         </main>

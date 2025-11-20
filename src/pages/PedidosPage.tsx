@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-// Importamos funciones y tipos de Pedidos
+// Importamos funciones y tipos de Pedidos (Asegúrate de que updateOrder exista en pedidosService.ts)
 import { getOrders, createOrder, deleteOrder, updateOrderStatus, getProveedores, getProductosAlmacen, OrdenCompraData, PedidoEstado } from '../services/pedidosService';
 // Importamos INTERFACES como tipo (necesario para el tipado correcto)
 import type { LeadContact } from '../services/contactService'; 
 import type { ProductoAlmacenData } from '../services/almacenService'; 
+import { updateOrder } from '../services/pedidosService'; 
 
 // --- Icon Components ---
 const CalendarIcon: React.FC<{ className?: string }> = ({ className = "w-5 h-5 text-gray-400" }) => (
@@ -26,100 +27,118 @@ const StatusUpdateIcon: React.FC<{ className?: string, onClick?: () => void }> =
 );
 
 // --- TIPOS SIMPLES LOCALES PARA LOS SELECTS ---
-// Esto resuelve el error de asignación de tipo de estado
 type SimpleContacto = { id: number, name: string };
 type SimpleProducto = { id: number, producto: string, precio: string, especificacion: string };
 
 
 // Interfaz para el estado del formulario de creación
 interface PedidoFormState {
-    id_proveedor: string | number;
-    id_producto: string | number;
-    fecha: string; 
-    cantidad: number;
-    total: number;
-    notasAdicionales: string;
+  id_proveedor: string | number;
+  id_producto: string | number;
+  fecha: string; 
+  cantidad: number;
+  total: number;
+  notasAdicionales: string;
 }
 
 
 const PedidosPage: React.FC = () => {
-    const [orders, setOrders] = useState<OrdenCompraData[]>([]);
-    const [proveedores, setProveedores] = useState<SimpleContacto[]>([]);
-    const [productos, setProductos] = useState<SimpleProducto[]>([]);
+  const [orders, setOrders] = useState<OrdenCompraData[]>([]);
+  const [proveedores, setProveedores] = useState<SimpleContacto[]>([]);
+  const [productos, setProductos] = useState<SimpleProducto[]>([]);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  const [ordenAEditar, setOrdenAEditar] = useState<OrdenCompraData | null>(null); // ESTADO PARA CONTROLAR LA EDICIÓN
     
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // ELIMINAMOS setMostrarEdicionModal
+  const [mostrarNotasModal, setMostrarNotasModal] = useState<OrdenCompraData | null>(null); // ESTADO PARA MODAL DE NOTAS
     
-    const [mostrarNotasModal, setMostrarNotasModal] = useState<OrdenCompraData | null>(null); 
-
-    const initialFormState: PedidoFormState = {
-        id_proveedor: '', id_producto: '', fecha: '', cantidad: 0, total: 0.00, notasAdicionales: ''
-    };
-    const [formData, setFormData] = useState<PedidoFormState>(initialFormState);
+  const initialFormState: PedidoFormState = {
+    id_proveedor: '', id_producto: '', fecha: '', cantidad: 0, total: 0.00, notasAdicionales: ''
+  };
+  const [formData, setFormData] = useState<PedidoFormState>(initialFormState);
 
 
-    // --- CARGA DE DATOS INICIALES (Proveedores, Productos y Órdenes) ---
+  // --- CARGA DE DATOS INICIALES (Proveedores, Productos y Órdenes) ---
 
-    const loadData = async () => {
-        setLoading(true);
-        setError(null);
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
 
-        try {
-            // 1. Cargar proveedores
-            const provResult = await getProveedores();
-            if (provResult.success && Array.isArray(provResult.data)) {
-                // Mapeamos a SimpleContacto[] (Ya tipado para eliminar el 'any' en el map)
-                const mappedProveedores: SimpleContacto[] = (provResult.data as LeadContact[]).map((p) => ({
-                    id: parseInt(p.id as string), 
-                    name: p.name,
+    try {
+      // 1. Cargar proveedores
+      const provResult = await getProveedores();
+      if (provResult.success && Array.isArray(provResult.data)) {
+        const mappedProveedores: SimpleContacto[] = (provResult.data as LeadContact[]).map((p) => ({
+          id: Number(p.id), 
+          name: p.name,
+        }));
+        setProveedores(mappedProveedores);
+      } else {
+        throw new Error(provResult.message || "Fallo al cargar proveedores.");
+      }
+
+      // 2. Cargar productos
+      const prodResult = await getProductosAlmacen();
+            if (prodResult.success && Array.isArray(prodResult.data)) {
+                const mappedProductos: SimpleProducto[] = (prodResult.data as ProductoAlmacenData[]).map((p) => ({
+                    id: Number(p.id),
+                    producto: p.producto,
+                    precio: p.precio,
+                    especificacion: p.especificacion
                 }));
-                setProveedores(mappedProveedores);
+                setProductos(mappedProductos);
             } else {
-                throw new Error(provResult.message || "Fallo al cargar proveedores.");
+                throw new Error(prodResult.message || "Fallo al cargar productos.");
             }
-
-            // 2. Cargar productos
-            const prodResult = await getProductosAlmacen();
-if (prodResult.success && Array.isArray(prodResult.data)) {
-     // Mapeamos a SimpleProducto[]
-     const mappedProductos: SimpleProducto[] = (prodResult.data as ProductoAlmacenData[]).map((p) => ({
-        // Solución: Usamos p.id si existe, sino 0. Y luego convertimos a number.
-        id: p.id ? Number(p.id) : 0, 
-        producto: p.producto,
-        precio: p.precio,
-        especificacion: p.especificacion
-    }));
-    setProductos(mappedProductos);
-} else {
-    throw new Error(prodResult.message || "Fallo al cargar productos.");
-}
             
-            // 3. Cargar órdenes de compra
-            const orderResult = await getOrders();
-            if (orderResult.success && Array.isArray(orderResult.data)) {
-                setOrders(orderResult.data as OrdenCompraData[]);
-            } else {
-                throw new Error(orderResult.message || "Fallo al cargar órdenes.");
-            }
+      // 3. Cargar órdenes de compra
+      const orderResult = await getOrders();
+      if (orderResult.success && Array.isArray(orderResult.data)) {
+        setOrders(orderResult.data as OrdenCompraData[]);
+      } else {
+        throw new Error(orderResult.message || "Fallo al cargar órdenes.");
+      }
 
-        } catch (err: unknown) { // <--- CATCH TIPADO
-            console.error("Error cargando datos iniciales:", err);
-            setError(`Error al cargar datos: ${(err as Error).message}`);
-        } finally {
-            setLoading(false);
-        }
-    };
+    } catch (err: unknown) { // <--- CATCH TIPADO
+      console.error("Error cargando datos iniciales:", err);
+      setError(`Error al cargar datos: ${(err as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
     
     useEffect(() => {
         loadData();
     }, []);
+
+    // --- HANDLERS DE EDICIÓN ---
+    
+    const handleEditOrder = (orden: OrdenCompraData) => {
+    setOrdenAEditar(orden); 
+    
+    // CORRECCIÓN CLAVE: Convertir todos los IDs numéricos a STRING aquí
+    setFormData({
+        id_proveedor: String(orden.id_proveedor), // <-- CORRECCIÓN
+        id_producto: String(orden.id_producto),   // <-- CORRECCIÓN
+        fecha: orden.fecha, 
+        cantidad: orden.cantidad,
+        total: orden.total,
+        notasAdicionales: orden.notas_adicionales,
+    });
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    };
 
     // --- HANDLERS DE FORMULARIO ---
 
     const handleLimpiarFormulario = (e?: React.MouseEvent | React.FormEvent) => {
         if (e) { e.preventDefault(); }
         setFormData(initialFormState);
+        setOrdenAEditar(null); // Sale del modo edición
         setError(null);
         setSuccessMessage(null);
     };
@@ -133,33 +152,59 @@ if (prodResult.success && Array.isArray(prodResult.data)) {
     };
 
     const handleSubmitOrder = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        setSuccessMessage(null);
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
 
-        // Mapear el formulario al formato de la DB
-        const dataToSend = {
-            id_proveedor: parseInt(formData.id_proveedor as string),
-            id_producto: parseInt(formData.id_producto as string),
-            fecha: formData.fecha,
-            cantidad: formData.cantidad,
-            total: formData.total,
-            notas_adicionales: formData.notasAdicionales,
+    // Mapear el formulario a las claves de la DB (Parcial, no incluye todos los campos de OrdenCompraData)
+    const formFields = {
+        id_proveedor: parseInt(formData.id_proveedor as string),
+        id_producto: parseInt(formData.id_producto as string),
+        fecha: formData.fecha,
+        cantidad: formData.cantidad,
+        total: formData.total,
+        notas_adicionales: formData.notasAdicionales,
+    };
+    
+    let result;
+    
+    // ------------------------------------------------------------------
+    // LÓGICA UNIFICADA: CREAR (POST) O EDITAR (PUT)
+    // ------------------------------------------------------------------
+    
+    if (ordenAEditar) { 
+        // 1. EDICIÓN (PUT): CONSTRUIMOS EL OBJETO COMPLETO DE ORDEN
+        const dataToUpdate = { 
+            // Tomamos la orden original (ordenAEditar) y sobrescribimos solo los campos modificados
+            ...(ordenAEditar as OrdenCompraData), // <-- Tomamos todos los campos originales (id, estado, nombres, etc.)
+            ...formFields,                      // <-- Sobreescribimos con los datos del formulario
+            id_pedido: ordenAEditar.id_pedido as number,
+            id: ordenAEditar.id, // Aseguramos el ID numérico
         };
+        
+        // CORREGIDO: Llamamos a updateOrder con el objeto completo
+        result = await updateOrder(dataToUpdate); 
+        setOrdenAEditar(null); // Sale del modo edición al finalizar
+
+    } else {
+        // 2. CREACIÓN (POST)
+        // dataToSend aquí es un objeto parcial que coincide con el tipo que createOrder espera (Omit<...>)
+        result = await createOrder(formFields);
+    }
+        
+        // ------------------------------------------------------------------
 
         try {
-            const result = await createOrder(dataToSend);
-
             if (result.success) {
                 setSuccessMessage(result.message);
-                handleLimpiarFormulario(e); // Limpiar formulario
+                handleLimpiarFormulario(e); // Limpia y resetea el formulario
                 loadData(); // Recargar lista
             } else {
                 setError(result.message);
             }
-        } catch (err: unknown) { // <--- CATCH TIPADO
-            setError('Error al generar la orden: ' + (err as Error).message);
+        } catch (err: unknown) {
+            setError('Error al procesar la orden: ' + (err as Error).message);
         } finally {
             setLoading(false);
         }
@@ -220,7 +265,6 @@ if (prodResult.success && Array.isArray(prodResult.data)) {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-    
     // Simular total estimado basado en el producto seleccionado (CALCULADORA)
     useEffect(() => {
         if (formData.id_producto && formData.cantidad > 0) {
@@ -249,11 +293,11 @@ if (prodResult.success && Array.isArray(prodResult.data)) {
         {successMessage && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">{successMessage}</div>}
 
 
-   {/* Sección Generar Orden de Compra */}
+   {/* Sección Generar Orden de Compra (FORMULARIO PRINCIPAL) */}
    <div className="mb-10">
     <div className="flex justify-between items-center bg-gray-100 px-4 py-3 rounded-t-md shadow-sm w-full">
      <h2 className="text-2xl font-semibold text-gray-800">
-      Generar Orden de Compra
+        {ordenAEditar ? 'Editar Orden de Compra' : 'Generar Orden de Compra'}
      </h2>
      <button
       type="button"
@@ -261,7 +305,7 @@ if (prodResult.success && Array.isArray(prodResult.data)) {
       className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out"
       disabled={loading}
      >
-      Limpiar Formulario
+      {ordenAEditar ? 'Cancelar Edición' : 'Limpiar Formulario'}
      </button>
     </div>
     <div className="bg-white p-6 rounded-b-md shadow-lg">
@@ -310,8 +354,8 @@ if (prodResult.success && Array.isArray(prodResult.data)) {
          </div>
         </div>
        </div>
-       </div>
-     
+      </div>
+
       {/* Producto (ID) */}
       <div className="flex-grow basis-0 min-w-[280px]">
        <div className="flex items-center">
@@ -392,14 +436,14 @@ if (prodResult.success && Array.isArray(prodResult.data)) {
        </div>
       </div>
 
-      {/* Botón Generar Orden */}
+      {/* Botón Generar Orden / Guardar Cambios */}
       <div className="w-full flex justify-end mt-4">
        <button
         type="submit"
         disabled={loading}
         className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-md shadow-md transition duration-150 ease-in-out disabled:opacity-50"
        >
-        Generar Orden
+        {ordenAEditar ? 'Guardar Cambios' : 'Generar Orden'} {/* <-- TEXTO DINÁMICO */}
        </button>
       </div>
      </form>
@@ -449,8 +493,13 @@ if (prodResult.success && Array.isArray(prodResult.data)) {
             <ViewIcon />
            </button>
            
-           {/* EDITAR PEDIDO (FUNCIONALIDAD PENDIENTE) */}
-           <button title="Editar Pedido" className="text-gray-400 hover:text-indigo-600 p-1 rounded-full hover:bg-indigo-100 transition-colors disabled:opacity-50" disabled={loading}>
+           {/* EDITAR PEDIDO (AHORA PRECÁRGA EL FORMULARIO SUPERIOR) */}
+           <button 
+                title="Editar Pedido" 
+                onClick={() => handleEditOrder(orden)} // <--- ASIGNAMOS EL MANEJADOR
+                className="text-gray-400 hover:text-indigo-600 p-1 rounded-full hover:bg-indigo-100 transition-colors disabled:opacity-50" 
+                disabled={loading}
+           >
             <EditIcon />
            </button>
            
@@ -499,6 +548,7 @@ if (prodResult.success && Array.isArray(prodResult.data)) {
                 </div>
             </div>
         )}
+        
   </div>
  );
 };
