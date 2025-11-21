@@ -6,7 +6,7 @@ const API_URL_USERS = 'http://localhost/Pizzatrack/backend/api/users/index.php';
 
 // Interfaz para los datos que enviamos/recibimos
 export interface EmpleadoData {
-  id?: number; // <--- DEBE SER OPCIONAL AQUÍ
+  id?: number; 
   nombre: string;
   usuario: string;
   contrasena?: string;
@@ -16,30 +16,35 @@ export interface EmpleadoData {
 }
 
 // Interfaz para la respuesta del API (incluye el flag de éxito)
-interface ApiResponse {
+interface ApiResponse<T = EmpleadoData[]> { // Tipado genérico para claridad
   success: boolean;
-  data?: EmpleadoData[];
+  data?: T;
   message: string;
 }
 
 // ---------------------------
-// A. FUNCIÓN DE LECTURA (GET)
+// A. FUNCIÓN DE LECTURA (GET) - CORREGIDA
 // ---------------------------
-export const getEmpleados = async (): Promise<ApiResponse> => {
+export const getEmpleados = async (): Promise<ApiResponse<EmpleadoData[]>> => {
     try {
         const response = await fetch(API_URL_USERS);
 
-        // Si la respuesta HTTP no es 200, lanzar error
         if (!response.ok) {
             return { success: false, message: `Error HTTP: ${response.status}` };
         }
 
-        const data = await response.json();
-        return data as ApiResponse;
+        const json = await response.json();
+        
+        // ** CLAVE: Extraemos data.data si existe, sino, devolvemos el objeto original **
+        if (json.success) {
+            return { success: true, data: json.data as EmpleadoData[], message: json.message };
+        }
+        
+        return json as ApiResponse<EmpleadoData[]>;
 
     } catch (error) {
         console.error("Error en getEmpleados:", error);
-        return { success: false, message: 'Fallo de conexión con el servidor.' };
+        return { success: false, message: 'Fallo de conexión con el servidor (Usuarios).' };
     }
 };
 

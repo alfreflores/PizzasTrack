@@ -26,19 +26,25 @@ export interface OrdenCompraData {
 }
 
 // --- INTERFAZ DE RESPUESTA ---
-interface ApiResponse {
+interface ApiResponse<T = OrdenCompraData[]> {
     success: boolean;
-    data?: unknown; 
+    data?: T; 
     message: string;
 }
 
-// --- FUNCIÓN DE LECTURA (GET) DE ÓRDENES ---
-export const getOrders = async (): Promise<ApiResponse> => {
+// --- FUNCIÓN DE LECTURA (GET) DE ÓRDENES - CORREGIDA ---
+export const getOrders = async (): Promise<ApiResponse<OrdenCompraData[]>> => {
     try {
         const response = await fetch(API_URL_PEDIDOS);
-        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-        const data = await response.json();
-        return data as ApiResponse;
+        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+        const json = await response.json();
+        
+        if (json.success) {
+            return { success: true, data: json.data as OrdenCompraData[], message: json.message };
+        }
+        
+        return json as ApiResponse<OrdenCompraData[]>;
+        
     } catch (error) {
         console.error("Error en getOrders:", error);
         return { success: false, message: 'Fallo al cargar las órdenes de compra.' };

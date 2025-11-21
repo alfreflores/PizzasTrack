@@ -44,8 +44,8 @@ if ($method === 'GET') {
                 'id_reporte' => (int)$r['id_reporte'],
                 'asunto' => $r['asunto'],
                 'descripcion' => $r['descripcion'],
-                'fecha_creacion' => $r['fecha_creacion'],
-                'estado' => $r['estado'],
+                'fecha_creacion' => $r['fecha_creacion'], // Ya es datetime, el frontend lo formatea
+                'estado' => $r['estado'], // Estado: 'pendiente', 'resuelto', 'en_proceso'
                 'nombre_trabajador' => $r['nombre_trabajador'],
                 'puesto_trabajador' => $r['puesto_trabajador']
             ];

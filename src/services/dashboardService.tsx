@@ -1,91 +1,113 @@
+/// src/services/dashboardService.tsx
 import { getIncidencias } from "./incidenciaService";
-import { getTrabajadores } from "./incidenciaService"; // Reutilizamos esta función para contar empleados
-//import { getProductos } from "./almacenService"; 
-import { getContacts } from "./contactService";
-import { getOrders } from "./pedidosService"; // <--- NUEVA IMPORTACIÓN PARA PEDIDOS
+import { getEmpleados } from "./userService"; // Usado para Empleados
+import { getContacts } from "./contactService"; // Usado para Proveedores
+import { getOrders } from "./pedidosService"; 
+import { getVentasDiarias } from "./pizzaService"; 
 
 import type { LeadContact } from "./contactService"; 
 import type { IncidenciaData } from "./incidenciaService"; 
-// Asumiendo que existe un tipo OrderData en tu pedidoService
-// import type { OrderData } from "./pedidoService"; 
+import type { OrdenCompraData } from "./pedidosService";
+import type { ReporteDiarioData } from "./pizzaService";
+import type { EmpleadoData } from "./userService"; // <- Importar EmpleadoData para tipado
 
 // --- INTERFACES ---
 interface DashboardMetrics {
-    // CAMBIO: pedidosSolicitadosCount reemplaza a activosCount (de la API de Almacén, pero mantenemos su uso)
     pedidosSolicitadosCount: number; 
     proveedoresCount: number;
     empleadosCount: number;
     ventasTotal: number; 
     reportesPendientes: { id: number, usuario: string, asunto: string, hora: string, status: 'pendiente' | 'respondido' }[]; 
+    ventasDiariasReporte: ReporteDiarioData | null;
 }
 
-interface ApiResponse {
+interface ApiResponse<T = unknown> { // Usamos un genérico para mantener la estructura
     success: boolean;
-    data?: DashboardMetrics;
+    data?: T;
     message: string;
 }
 
 // --- FUNCIÓN PRINCIPAL DE CARGA ---
-export const loadDashboardData = async (): Promise<ApiResponse> => {
+export const loadDashboardData = async (): Promise<ApiResponse<DashboardMetrics>> => {
     try {
-        // --- 1. CONTEO DE EMPLEADOS (Usuarios) ---
-        const userResult = await getTrabajadores();
-        const empleadosCount = (userResult.success && Array.isArray(userResult.data)) ? userResult.data.length : 0;
+        // Ejecución concurrente de todas las llamadas a la API
+        const [
+            userResult, 
+            contactResult, 
+            ordersResult, 
+            reportesResult, 
+            ventasResult
+        ] = await Promise.all([
+            getEmpleados() as Promise<ApiResponse<EmpleadoData[]>>, // Forzamos el tipado para que devuelva ApiResponse<T[]>
+            getContacts() as Promise<ApiResponse<LeadContact[]>>,
+            getOrders() as Promise<ApiResponse<OrdenCompraData[]>>,
+            getIncidencias() as Promise<ApiResponse<IncidenciaData[]>>,
+            getVentasDiarias() as Promise<ApiResponse<ReporteDiarioData>>,
+        ]);
+
         
-        // --- 2. CONTEO DE PROVEEDORES (Contactos) ---
-        const contactResult = await getContacts();
+        // --- 1. CONTEO DE EMPLEADOS (Debe ser el array en data) ---
+        const empleadosArray = (userResult.success && Array.isArray(userResult.data)) 
+            ? userResult.data as EmpleadoData[] : [];
+        const empleadosCount = empleadosArray.length;
+        
+        // --- 2. CONTEO DE PROVEEDORES ---
         let proveedoresCount = 0;
-        
-        if (contactResult.success && Array.isArray(contactResult.data)) {
-            const contactos = contactResult.data as LeadContact[];
-            // Filtramos solo los contactos cuya categoría es 'proveedor' (Asumiendo 'tipoContacto' del archivo anterior)
-            proveedoresCount = contactos.filter(c => c.tipoContacto === 'proveedor').length;
-        }
+        const contactosArray = (contactResult.success && Array.isArray(contactResult.data)) 
+            ? contactResult.data as LeadContact[] : [];
+        proveedoresCount = contactosArray.filter(c => c.tipoContacto === 'proveedor').length;
+
 
         // --- 3. CONTEO DE PEDIDOS SOLICITADOS ---
-        const ordersResult = await getOrders(); // <--- LLAMADA A LA API DE PEDIDOS
         let pedidosSolicitadosCount = 0;
-        
-        if (ordersResult.success && Array.isArray(ordersResult.data)) {
-            // Contar órdenes cuyo estado es 'Solicitado'
-            pedidosSolicitadosCount = ordersResult.data.filter(o => o.estado === 'Solicitado').length;
+        const ordenesArray = (ordersResult.success && Array.isArray(ordersResult.data))
+            ? ordersResult.data as OrdenCompraData[] : [];
+        pedidosSolicitadosCount = ordenesArray.filter(o => o.estado === 'Solicitado').length;
+
+
+        // --- 4. VENTAS TOTALES (Pizzas del día) ---
+        let ventasTotal = 0.00;
+        let ventasDiariasReporte: ReporteDiarioData | null = null;
+        if (ventasResult.success && ventasResult.data) {
+             ventasTotal = (ventasResult.data as ReporteDiarioData).totalVentas;
+             ventasDiariasReporte = ventasResult.data as ReporteDiarioData;
         }
 
-        // --- 4. REPORTES PENDIENTES ---
-        const reportesResult = await getIncidencias();
+        // --- 5. REPORTES PENDIENTES ---
         let reportesPendientes: DashboardMetrics['reportesPendientes'] = []; 
+        const incidenciasArray = (reportesResult.success && Array.isArray(reportesResult.data))
+            ? reportesResult.data as IncidenciaData[] : [];
         
-        if (reportesResult.success && Array.isArray(reportesResult.data)) {
-            const incidencias = reportesResult.data as IncidenciaData[];
-
-            reportesPendientes = incidencias
+        if (incidenciasArray.length > 0) {
+            reportesPendientes = incidenciasArray
                 .filter(r => r.estado === 'pendiente')
                 .map((r) => ({
                     id: r.id_reporte,
                     usuario: `${r.nombre_trabajador} (${r.puesto_trabajador})`, 
                     asunto: r.asunto,
-                    hora: new Date(r.fecha_creacion).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true }),
+                    // Aseguramos que la fecha_creacion exista y sea válida antes de intentar formatear
+                    hora: r.fecha_creacion ? new Date(r.fecha_creacion).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
                     status: 'pendiente' 
                 }));
         }
 
-        // --- 5. VENTAS (Placeholder) ---
-        const ventasTotal = 5987.99; 
-
+        // Deberíamos obtener: Pedidos: 3, Proveedores: 6, Empleados: 4, Reportes Pendientes: 1 (asumiendo 1 reporte pendiente real en DB)
+        
         return {
             success: true,
             data: {
-                pedidosSolicitadosCount, // <--- CAMBIO EN EL NOMBRE DE LA CLAVE
+                pedidosSolicitadosCount, 
                 proveedoresCount,
                 empleadosCount,
                 ventasTotal,
                 reportesPendientes,
-            },
+                ventasDiariasReporte: ventasDiariasReporte,
+            } as DashboardMetrics,
             message: "Métricas cargadas con éxito."
         };
 
     } catch (error) {
         console.error("Error cargando dashboard:", error);
-        return { success: false, message: "Fallo al conectar con uno o más servicios de datos." };
+        return { success: false, message: "Fallo al conectar con uno o más servicios de datos. Revise el formato JSON de las APIs PHP." };
     }
 };

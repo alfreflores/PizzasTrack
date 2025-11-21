@@ -17,19 +17,25 @@ export interface LeadContact {
     };
 }
 
-interface ApiResponse {
+interface ApiResponse<T = LeadContact[]> {
     success: boolean;
-    data?: LeadContact[];
+    data?: T;
     message: string;
 }
 
-// --- LECTURA (GET) ---
-export const getContacts = async (): Promise<ApiResponse> => {
+// --- LECTURA (GET) - CORREGIDA ---
+export const getContacts = async (): Promise<ApiResponse<LeadContact[]>> => {
     try {
         const response = await fetch(API_URL_CONTACTS);
-        const data = await response.json();
-        return data as ApiResponse;
-    } catch (_error) { // <-- CORRECCIÓN: Usamos _error
+        const json = await response.json();
+        
+        if (json.success) {
+            return { success: true, data: json.data as LeadContact[], message: json.message };
+        }
+        
+        return json as ApiResponse<LeadContact[]>;
+
+    } catch (_error) { 
         console.error("Error en getContacts:", _error);
         return { success: false, message: 'Fallo de conexión con el servidor.' };
     }

@@ -1,10 +1,8 @@
 // src/pages/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-// CORRECCIÓN: Cambiamos 'X' por 'XMarkIcon' para Heroicons.
-// Las demás importaciones se mantienen igual:
-import { TruckIcon, UserCircleIcon, ShoppingBagIcon, CurrencyDollarIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline'; 
-import { getVentasDiarias, ReporteDiarioData, DetalleVentaDia } from '../services/pizzaService'; 
+import { TruckIcon, UserCircleIcon, ShoppingBagIcon, CurrencyDollarIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline'; // Usamos íconos de Heroicons
+import { getVentasDiarias, ReporteDiarioData, DetalleVentaDia } from '../services/pizzaService'; // Importar servicio de ventas
 
 // --- Definiciones de Íconos para Claridad (Usamos Heroicons) ---
 const PedidosIcon: React.FC<{ className?: string }> = ({ className = "text-gray-600" }) => (
@@ -68,7 +66,8 @@ interface InfoCardProps {
 // Convertimos InfoCard para que pueda ser tanto Link como Button
 const InfoCard: React.FC<InfoCardProps> = ({ title, value, icon, to, onClick, loading, bgColor = "bg-white" }) => {
     const content = (
-        <div className={`${bgColor} p-6 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 transform group-hover:scale-[1.02] group-hover:shadow-xl ${to || onClick ? 'cursor-pointer' : ''}`}>
+        // AÑADIDO: min-h-[100px] para forzar una altura mínima consistente.
+        <div className={`${bgColor} p-6 rounded-lg shadow-lg flex items-center justify-between min-h-[100px] transition-all duration-300 transform group-hover:scale-[1.02] group-hover:shadow-xl ${to || onClick ? 'cursor-pointer' : ''}`}>
           <div>
             <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">{title}</p>
             <p className="text-3xl font-semibold text-gray-800 mt-1">
@@ -83,7 +82,7 @@ const InfoCard: React.FC<InfoCardProps> = ({ title, value, icon, to, onClick, lo
     
     if (to) {
         return (
-            <Link to={to} className="block group">
+            <Link to={to} className="block group h-full"> {/* AÑADIDO: h-full para estirar en el grid */}
                 {content}
             </Link>
         );
@@ -91,7 +90,7 @@ const InfoCard: React.FC<InfoCardProps> = ({ title, value, icon, to, onClick, lo
 
     // Si tiene onClick (Ventas), lo hacemos un botón para el modal
     return (
-        <button onClick={onClick} className="block group w-full text-left" disabled={loading}>
+        <button onClick={onClick} className="block group w-full text-left h-full" disabled={loading}> {/* AÑADIDO: h-full para estirar en el grid */}
             {content}
         </button>
     );
@@ -144,7 +143,7 @@ const Dashboard: React.FC = () => {
     // Simulación de la acción de restablecer
     const handleRestablecerDia = () => {
         // SIMULACIÓN: Muestra un pop-up y luego resetea los datos en el frontend
-        if (window.confirm("ADVERTENCIA: ¿Está seguro de SIMULAR el restablecimiento (borrado) de las ventas de PIZZAS del día? Esta acción no es reversible en la demo.")) {
+        if (window.confirm("ADVERTENCIA: ¿Está seguro de SIMULAR el restablecimiento (borrado) de las ventas de PIZZAS del día? Esta acción no es irreversible en la demo.")) {
             
             // Aquí iría una llamada a una nueva API: deleteVentasDiarias()
             
@@ -188,7 +187,8 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Tarjetas Informativas y Botones */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            {/* CORRECCIÓN: Aseguramos que el contenedor sea flex (ya lo es grid) y los items se estiren (grid-rows-stretch) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 items-stretch"> 
                 <InfoCard
                     title="PEDIDOS SOLICITADOS"
                     value={data.pedidosCount}
