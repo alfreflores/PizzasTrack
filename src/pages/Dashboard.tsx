@@ -2,7 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { TruckIcon, UserCircleIcon, ShoppingBagIcon, CurrencyDollarIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline'; // Usamos íconos de Heroicons
-import { getVentasDiarias, ReporteDiarioData, DetalleVentaDia } from '../services/pizzaService'; // Importar servicio de ventas
+import { ReporteDiarioData, DetalleVentaDia } from '../services/pizzaService'; // Importar tipos de servicio de ventas
+// --- CAMBIOS PARA USAR DATOS REALES DEL SERVICIO CONSOLIDADO ---
+import { loadDashboardData } from '../services/dashboardService'; 
+import type { DashboardMetrics } from '../services/dashboardService';
+// --- FIN CAMBIOS ---
 
 // --- Definiciones de Íconos para Claridad (Usamos Heroicons) ---
 const PedidosIcon: React.FC<{ className?: string }> = ({ className = "text-gray-600" }) => (
@@ -27,38 +31,27 @@ const PizzaIcon: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) 
 );
 
 
-// --- TIPOS DE DATOS ---
+// --- TIPOS DE DATOS (Actualizado para reflejar la estructura de la API) ---
 interface DashboardData {
-  pedidosCount: number;
+  pedidosCount: number; // Corresponde a pedidosSolicitadosCount de DashboardMetrics
   proveedoresCount: number;
   empleadosCount: number;
   ventasTotal: number; // Suma total de ventas del día
   loading: boolean;
-  ventasDiariasReporte: ReporteDiarioData | null; // Nuevo campo para el reporte detallado
+  ventasDiariasReporte: ReporteDiarioData | null; // Reporte detallado de ventas
+  reportesPendientes: DashboardMetrics['reportesPendientes']; // Reportes que están en estado 'pendiente'
 }
 
-// Datos de ejemplo para la sección de reportes en el Dashboard
-interface ReporteResumido {
-  id: number;
-  usuario: string; 
-  asunto: string;
-  hora: string;
-  status: 'respondido' | 'pendiente';
-}
+// ELIMINAMOS EL MOCK DE reportesResumidosMock
 
-const reportesResumidosMock: ReporteResumido[] = [
-  { id: 1, usuario: "Alfredo Díaz (Jefe)", asunto: "Baja de Electricidad", hora: "05:38 p.m.", status: 'pendiente' },
-  { id: 2, usuario: "Pat Black (Gerente)", asunto: "Falta de Harina (Stock Rojo)", hora: "05:19 p.m.", status: 'pendiente' },
-  { id: 3, usuario: "Bruce Fox (Cajero)", asunto: "Reporte de Usuario", hora: "01:45 PM", status: 'respondido' },
-];
 
 // --- COMPONENTE InfoCard MEJORADO CON LINK/BUTTON ---
 interface InfoCardProps {
   title: string;
   value: string | number;
   icon: React.ReactNode;
-  to?: string; // Opcional si es un Link
-  onClick?: () => void; // Nuevo para manejar el modal
+  to?: string; 
+  onClick?: () => void; 
   bgColor?: string; 
   loading: boolean;
 }
@@ -82,7 +75,7 @@ const InfoCard: React.FC<InfoCardProps> = ({ title, value, icon, to, onClick, lo
     
     if (to) {
         return (
-            <Link to={to} className="block group h-full"> {/* AÑADIDO: h-full para estirar en el grid */}
+            <Link to={to} className="block group h-full"> 
                 {content}
             </Link>
         );
@@ -90,44 +83,14 @@ const InfoCard: React.FC<InfoCardProps> = ({ title, value, icon, to, onClick, lo
 
     // Si tiene onClick (Ventas), lo hacemos un botón para el modal
     return (
-        <button onClick={onClick} className="block group w-full text-left h-full" disabled={loading}> {/* AÑADIDO: h-full para estirar en el grid */}
+        <button onClick={onClick} className="block group w-full text-left h-full" disabled={loading}>
             {content}
         </button>
     );
 };
 
-
-// --- FUNCIÓN DE FETCH REAL (MOCK DE OTRAS APIS + REAL DE PIZZAS) ---
-const fetchDashboardData = async (): Promise<DashboardData> => {
-    // 1. Datos que DEBEN venir de tus otras APIs (pedidos, usuarios, contactos)
-    // NOTA: Deberás conectar aquí las funciones de tus servicios reales (pedidosService, userService, etc.)
-    const mockCounts = {
-        pedidosCount: 2, // Reemplazar con llamada a getOrders()
-        proveedoresCount: 4, // Reemplazar con llamada a getProveedores()
-        empleadosCount: 3, // Reemplazar con llamada a getEmpleados()
-    };
-    
-    // 2. Obtener Reporte Diario de Ventas de Pizzas (NUEVA FUNCIÓN)
-    const ventasResult = await getVentasDiarias();
-    
-    let ventasTotal = 5987.99; // Mantener el mock si la llamada falla, pero usar el resultado
-    let ventasDiariasReporte: ReporteDiarioData | null = null;
-
-    if (ventasResult.success && ventasResult.data) {
-        ventasTotal = ventasResult.data.totalVentas;
-        ventasDiariasReporte = ventasResult.data;
-    } else {
-        console.error("Error al cargar ventas diarias:", ventasResult.message);
-    }
-
-    return {
-        ...mockCounts,
-        ventasTotal: ventasTotal,
-        ventasDiariasReporte: ventasDiariasReporte,
-        loading: false,
-    };
-};
-
+// ELIMINAMOS fetchDashboardData y la lógica del MOCK
+// ...
 
 const Dashboard: React.FC = () => {
     const [data, setData] = useState<DashboardData>({
@@ -137,6 +100,7 @@ const Dashboard: React.FC = () => {
         ventasTotal: 0.00,
         loading: true,
         ventasDiariasReporte: null,
+        reportesPendientes: [], // Usaremos este array con datos reales
     });
     const [mostrarDetalleVentas, setMostrarDetalleVentas] = useState(false);
     
@@ -158,11 +122,29 @@ const Dashboard: React.FC = () => {
         }
     };
 
+    // --- LÓGICA DE CARGA CORREGIDA ---
     useEffect(() => {
         const loadDashboard = async () => {
             try {
-                const fetchedData = await fetchDashboardData();
-                setData(fetchedData);
+                // Usamos la función consolidada para obtener todos los datos reales
+                const result = await loadDashboardData(); 
+                
+                if (result.success && result.data) {
+                    // Mapeamos los resultados de DashboardMetrics al estado local
+                    setData({
+                        // Usamos pedidosSolicitadosCount del servicio
+                        pedidosCount: result.data.pedidosSolicitadosCount, 
+                        proveedoresCount: result.data.proveedoresCount,
+                        empleadosCount: result.data.empleadosCount,
+                        ventasTotal: result.data.ventasTotal,
+                        loading: false,
+                        ventasDiariasReporte: result.data.ventasDiariasReporte,
+                        reportesPendientes: result.data.reportesPendientes, // Datos reales
+                    });
+                } else {
+                    console.error("Error al cargar datos del Dashboard:", result.message);
+                    setData(prev => ({ ...prev, loading: false }));
+                }
             } catch (error) {
                 console.error("Error al cargar datos del Dashboard:", error);
                 setData(prev => ({ ...prev, loading: false }));
@@ -186,8 +168,7 @@ const Dashboard: React.FC = () => {
                 </Link>
             </div>
 
-            {/* Tarjetas Informativas y Botones */}
-            {/* CORRECCIÓN: Aseguramos que el contenedor sea flex (ya lo es grid) y los items se estiren (grid-rows-stretch) */}
+            {/* Tarjetas Informativas que usan datos dinámicos */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 items-stretch"> 
                 <InfoCard
                     title="PEDIDOS SOLICITADOS"
@@ -220,17 +201,18 @@ const Dashboard: React.FC = () => {
                 />
             </div>
 
-            {/* Sección Destacada: Reportes y/o Pendientes (Mock data) */}
+            {/* Sección Destacada: Reportes y/o Pendientes (USANDO DATOS REALES) */}
             <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h2 className="text-xl font-semibold text-gray-700 mb-4">Reportes y/o Pendientes ({reportesResumidosMock.filter(r => r.status === 'pendiente').length})</h2>
-                {reportesResumidosMock
-                    .filter(reporte => reporte.status === 'pendiente')
+                <h2 className="text-xl font-semibold text-gray-700 mb-4">Reportes y/o Pendientes ({data.reportesPendientes.length})</h2>
+                {data.reportesPendientes.length > 0 ? (
+                    data.reportesPendientes
                     .map((reporte) => (
                         <Link to="/reportes" key={reporte.id} className="block group">
                             <div className="p-3 rounded-md bg-red-100 border border-red-200 mb-3 last:mb-0 text-red-700 hover:bg-red-200 transition-colors cursor-pointer">
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className={`text-sm font-semibold text-red-700`}>{reporte.asunto}</p>
+                                        {/* El campo 'usuario' viene con nombre y rol ya concatenados */}
                                         <p className="text-xs text-gray-500">{reporte.usuario}</p>
                                     </div>
                                     <div className="flex items-center text-xs text-gray-500">
@@ -241,8 +223,7 @@ const Dashboard: React.FC = () => {
                             </div>
                         </Link>
                     ))
-                }
-                {reportesResumidosMock.filter(r => r.status === 'pendiente').length === 0 && (
+                ) : (
                     <div className="text-center text-gray-500 py-4">
                         <p>No hay reportes o pendientes urgentes en este momento.</p>
                     </div>
@@ -257,7 +238,6 @@ const Dashboard: React.FC = () => {
                     <div className="relative mx-auto p-6 border w-full max-w-lg shadow-lg rounded-md bg-white">
                         <h3 className="text-xl font-semibold text-gray-700 mb-4 border-b pb-2 flex justify-between items-center">
                             <span>Reporte de Ventas de Pizzas (Día)</span>
-                            {/* CORRECCIÓN: Usamos XMarkIcon */}
                             <button onClick={() => setMostrarDetalleVentas(false)} className="text-gray-400 hover:text-gray-600 p-1"><XMarkIcon className="w-5 h-5" /></button>
                         </h3>
 

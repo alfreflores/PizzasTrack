@@ -108,40 +108,66 @@ if ($method === 'POST') {
 }
 
 // ----------------------------------------------------
-// 4. LÓGICA DE ACTUALIZACIÓN DE ESTADO (PUT)
+// 4. LÓGICA DE ACTUALIZACIÓN (PUT) - CORREGIDA PARA EDICIÓN COMPLETA
 // ----------------------------------------------------
 if ($method === 'PUT') {
     $data = json_decode(file_get_contents('php://input'), true);
 
-    if (!isset($data['id'], $data['estado'])) {
+    if (!isset($data['id_pedido'])) { // Usamos id_pedido del objeto enviado
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Falta el ID o el nuevo estado para la orden.']);
+        echo json_encode(['success' => false, 'message' => 'Falta el ID del pedido a actualizar.']);
         exit();
     }
     
-    $id = (int)$data['id'];
-    $nuevoEstado = $data['estado'];
-    
+    $id_pedido = (int)$data['id_pedido']; // Usar id_pedido
+
+    // Campos que pueden ser opcionales o venir con el valor actual si no se modificó
+    $id_proveedor = (int)($data['id_proveedor'] ?? null);
+    $id_producto = (int)($data['id_producto'] ?? null);
+    $fecha = $data['fecha'] ?? null;
+    $cantidad = (int)($data['cantidad'] ?? null);
+    $total = (float)($data['total'] ?? null);
+    $estado = $data['estado'] ?? 'Solicitado'; // Si viene, lo actualiza
+    $notas_adicionales = $data['notas_adicionales'] ?? null;
+
     try {
         $pdo = connectDB(); 
+        
+        // La consulta debe incluir todos los campos editables
         $stmt = $pdo->prepare("
-            UPDATE pedidos SET estado = :estado WHERE id_pedido = :id
+            UPDATE pedidos SET 
+                id_proveedor = :id_proveedor, 
+                id_producto = :id_producto, 
+                fecha = :fecha, 
+                cantidad = :cantidad, 
+                total = :total, 
+                estado = :estado,
+                notas_adicionales = :notas_adicionales
+            WHERE id_pedido = :id_pedido
         ");
         
-        $stmt->bindParam(':id', $id);
-        $stmt->bindParam(':estado', $nuevoEstado);
+        $stmt->bindParam(':id_pedido', $id_pedido);
+        $stmt->bindParam(':id_proveedor', $id_proveedor);
+        $stmt->bindParam(':id_producto', $id_producto);
+        $stmt->bindParam(':fecha', $fecha);
+        $stmt->bindParam(':cantidad', $cantidad);
+        $stmt->bindParam(':total', $total);
+        $stmt->bindParam(':estado', $estado);
+        $stmt->bindParam(':notas_adicionales', $notas_adicionales);
+        
         $stmt->execute();
         
         if ($stmt->rowCount() > 0) {
             http_response_code(200);
-            echo json_encode(['success' => true, 'message' => "Estado de orden #OC-" . $id . " actualizado a {$nuevoEstado}."]);
+            echo json_encode(['success' => true, 'message' => "Orden #OC-" . $id_pedido . " actualizada completamente."]);
         } else {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Orden no encontrada.']);
+            // Esto sucede si la orden existe pero no hubo cambios en los datos.
+            http_response_code(200);
+            echo json_encode(['success' => true, 'message' => 'Orden encontrada, pero no se realizaron cambios.']);
         }
     } catch (\PDOException $e) {
         http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Error de base de datos al actualizar estado: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => 'Error de base de datos al actualizar la orden: ' . $e->getMessage()]);
     }
     exit();
 }

@@ -12,7 +12,7 @@ import type { ReporteDiarioData } from "./pizzaService";
 import type { EmpleadoData } from "./userService"; // <- Importar EmpleadoData para tipado
 
 // --- INTERFACES ---
-interface DashboardMetrics {
+export interface DashboardMetrics {
     pedidosSolicitadosCount: number; 
     proveedoresCount: number;
     empleadosCount: number;
