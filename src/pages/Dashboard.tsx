@@ -169,7 +169,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Tarjetas Informativas que usan datos dinámicos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 items-stretch"> 
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 items-start"> 
                 <InfoCard
                     title="PEDIDOS SOLICITADOS"
                     value={data.pedidosCount}

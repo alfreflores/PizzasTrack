@@ -51,7 +51,85 @@ if ($method === 'GET') {
     exit();
 }
 
-// ... (Las demás lógicas: POST, DELETE, PUT se mantienen y solo se ajusta el mapeo de retorno en PUT) ...
+// ----------------------------------------------------
+// 3. LÓGICA DE CREACIÓN (POST)
+// ----------------------------------------------------
+if ($method === 'POST') {
+    $data = json_decode(file_get_contents('php://input'), true);
+
+    // Validamos los campos obligatorios del frontend
+    if (!isset($data['name'], $data['phone'], $data['email'], $data['tipoContacto'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Faltan campos requeridos para crear el contacto (nombre, teléfono, email, tipoContacto).']);
+        exit();
+    }
+    
+    $nombre = $data['name'];
+    $telefono = $data['phone'];
+    $email = $data['email'];
+    $categoria = $data['tipoContacto']; 
+    $descripcion = $data['tag'] ?? null; // Si 'tag' no se envía, por defecto es NULL
+    
+    try {
+        $pdo = connectDB(); 
+
+        $stmt = $pdo->prepare("
+            INSERT INTO contactos (nombre, telefono, email, categoria, descripcion) 
+            VALUES (:nombre, :telefono, :email, :categoria, :descripcion)
+        ");
+        
+        $stmt->bindParam(':nombre', $nombre);
+        $stmt->bindParam(':telefono', $telefono);
+        $stmt->bindParam(':email', $email);
+        $stmt->bindParam(':categoria', $categoria);
+        $stmt->bindParam(':descripcion', $descripcion);
+
+        $stmt->execute();
+        
+        http_response_code(201);
+        echo json_encode(['success' => true, 'message' => 'Contacto creado exitosamente.', 'id' => $pdo->lastInsertId()]);
+        
+    } catch (\PDOException $e) {
+        $msg = ($e->getCode() === '23000') ? 'Error: El email o teléfono ya existe (duplicado).' : 'Error de base de datos: ' . $e->getMessage();
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => $msg]);
+    }
+    exit();
+}
+
+// ----------------------------------------------------
+// 4. LÓGICA DE ELIMINACIÓN (DELETE)
+// ----------------------------------------------------
+if ($method === 'DELETE') {
+    $data = json_decode(file_get_contents('php://input'), true);
+
+    if (!isset($data['id'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Falta el ID del contacto a eliminar.']);
+        exit();
+    }
+    
+    $id = $data['id'];
+
+    try {
+        $pdo = connectDB(); 
+        $stmt = $pdo->prepare("DELETE FROM contactos WHERE id_contacto = :id");
+        $stmt->bindParam(':id', $id);
+        $stmt->execute();
+        
+        if ($stmt->rowCount() > 0) {
+            http_response_code(200);
+            echo json_encode(['success' => true, 'message' => 'Contacto eliminado exitosamente.']);
+        } else {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Contacto no encontrado.']);
+        }
+    } catch (\PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Error de base de datos al eliminar: ' . $e->getMessage()]);
+    }
+    exit();
+}
 
 // ----------------------------------------------------
 // 5. LÓGICA DE ACTUALIZACIÓN (PUT)

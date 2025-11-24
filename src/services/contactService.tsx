@@ -44,9 +44,13 @@ export const getContacts = async (): Promise<ApiResponse<LeadContact[]>> => {
 // --- CREACIÓN (POST) ---
 export const createContact = async (contact: Omit<LeadContact, 'id' | 'profile'> & { profile?: LeadContact['profile'] }): Promise<ApiResponse> => {
     try {
+        // Objeto limpio: Solo los 5 campos de la base de datos (excluyendo 'profile')
         const dataToSend = {
-            ...contact,
-            profile: undefined
+            name: contact.name,
+            phone: contact.phone,
+            email: contact.email,
+            tag: contact.tag,
+            tipoContacto: contact.tipoContacto,
         };
         const response = await fetch(API_URL_CONTACTS, {
             method: 'POST',
@@ -64,9 +68,14 @@ export const createContact = async (contact: Omit<LeadContact, 'id' | 'profile'>
 // --- ACTUALIZACIÓN (PUT) ---
 export const updateContact = async (contact: LeadContact & { id: string | number }): Promise<ApiResponse> => {
     try {
+        // Objeto limpio: 6 campos (incluyendo id) para la base de datos (excluyendo 'profile')
         const dataToSend = {
-            ...contact,
-            profile: undefined 
+            id: contact.id,
+            name: contact.name,
+            phone: contact.phone,
+            email: contact.email,
+            tag: contact.tag,
+            tipoContacto: contact.tipoContacto,
         };
         const response = await fetch(API_URL_CONTACTS, {
             method: 'PUT',
@@ -80,7 +89,6 @@ export const updateContact = async (contact: LeadContact & { id: string | number
         return { success: false, message: 'Fallo de conexión durante la actualización.' };
     }
 };
-
 // --- ELIMINACIÓN (DELETE) ---
 export const deleteContact = async (id: string | number): Promise<ApiResponse> => {
     try {
