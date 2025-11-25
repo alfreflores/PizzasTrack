@@ -184,7 +184,7 @@ const ReportesPage: React.FC = () => {
 
     // --- Cargar el Usuario Logueado y Datos ---
     useEffect(() => {
-        const storedUser = localStorage.getItem('currentUser');
+        const storedUser = sessionStorage.getItem('currentUser');
         let userId = null;
         
         if (storedUser) {
@@ -196,6 +196,7 @@ const ReportesPage: React.FC = () => {
                 if (!isNaN(userId) && userId > 0) {
                     setCurrentUser(user as CurrentUser);
                     setCurrentUserId(userId);
+                    
                 }
             } catch (e) {
                 console.error("Error al leer sesión:", e);

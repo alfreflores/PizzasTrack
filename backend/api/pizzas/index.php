@@ -120,13 +120,13 @@ if ($method === 'GET') {
 
 // ----------------------------------------------------
 // 3. LÓGICA DE CREACIÓN DE RECETA O VENTA (POST)
-// (Sin cambios, lógica de venta y creación de recetas)
 // ----------------------------------------------------
 if ($method === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
 
     // --- A. LÓGICA DE VENTA DE PIZZA (SI RECIBE 'items') ---
     if (isset($data['items']) && is_array($data['items'])) {
+        // ... (Lógica de venta - Se mantiene omitida por brevedad, asumiendo que funciona)
         $items = $data['items'];
         $total_venta = 0;
         
@@ -168,11 +168,69 @@ if ($method === 'POST') {
     } 
     
     // --- B. LÓGICA DE CREACIÓN DE RECETA (SI RECIBE 'nombre') ---
-    else if (isset($data['nombre'], $data['tamano'], $data['precio'])) {
-        // (Lógica de creación de receta omitida por brevedad, asumiendo que funciona)
-        http_response_code(201);
-        echo json_encode(['success' => true, 'message' => 'Receta creada exitosamente.', 'id_receta' => 1]); // Simulación
-        exit();
+    else if (isset($data['nombre'], $data['tamano'], $data['precio'], $data['ingredientes']) && is_array($data['ingredientes'])) {
+        // [MODIFICADO] Implementación completa de la creación de la receta
+        $nombre = $data['nombre'];
+        $tamano = $data['tamano'];
+        $precio = (float)$data['precio'];
+        $ingredientes = $data['ingredientes'];
+
+        try {
+            $pdo = connectDB(); 
+            $pdo->beginTransaction();
+
+            // 1. Insertar en pizzas_recetas
+            $stmt_receta = $pdo->prepare("
+                INSERT INTO pizzas_recetas (nombre, tamano, precio) 
+                VALUES (:nombre, :tamano, :precio)
+            ");
+            $stmt_receta->bindParam(':nombre', $nombre);
+            $stmt_receta->bindParam(':tamano', $tamano);
+            $stmt_receta->bindParam(':precio', $precio);
+            $stmt_receta->execute();
+            $id_receta = $pdo->lastInsertId();
+
+            // 2. Insertar en receta_detalle (ingredientes)
+            $stmt_detalle = $pdo->prepare("
+                INSERT INTO receta_detalle (id_receta, id_producto, cantidad_uso) 
+                VALUES (:id_receta, :id_producto, :cantidad_uso)
+            ");
+
+            foreach ($ingredientes as $ingrediente) {
+                // Aseguramos que los campos existen y son válidos
+                if (!isset($ingrediente['id_producto']) || !isset($ingrediente['cantidad_uso'])) {
+                     throw new Exception("Faltan datos en los ingredientes.");
+                }
+
+                $id_producto = (int)$ingrediente['id_producto'];
+                $cantidad_uso = (float)$ingrediente['cantidad_uso'];
+
+                $stmt_detalle->execute([
+                    ':id_receta' => $id_receta,
+                    ':id_producto' => $id_producto,
+                    ':cantidad_uso' => $cantidad_uso,
+                ]);
+            }
+
+            $pdo->commit(); 
+            http_response_code(201);
+            echo json_encode(['success' => true, 'message' => 'Receta creada exitosamente.', 'id_receta' => $id_receta]);
+            exit();
+            
+        } catch (\PDOException $e) {
+            $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Error DB al crear la receta: ' . $e->getMessage()
+            ]);
+            exit();
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Error al procesar ingredientes: ' . $e->getMessage()]);
+            exit();
+        }
     }
 
     // Si POST no contiene ni 'items' ni 'nombre', es un error de formato.
@@ -182,25 +240,128 @@ if ($method === 'POST') {
 }
 
 // ----------------------------------------------------
-// 4. LÓGICA DE ACTUALIZACIÓN (PUT) - EDITAR RECETA
-// (Sin cambios)
+// 4. LÓGICA DE ACTUALIZACIÓN (PUT) - EDITAR RECETA Y SUS INGREDIENTES
 // ----------------------------------------------------
 if ($method === 'PUT') {
-    http_response_code(200);
-    echo json_encode(['success' => true, 'message' => 'Receta actualizada exitosamente.', 'id_receta' => 1]); // Simulación
+    $data = json_decode(file_get_contents('php://input'), true);
+
+    if (!isset($data['id_receta'], $data['nombre'], $data['tamano'], $data['precio'], $data['ingredientes']) || !is_array($data['ingredientes'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Faltan campos requeridos para actualizar la receta.']);
+        exit();
+    }
+    
+    $id_receta = (int)$data['id_receta'];
+    $nombre = $data['nombre'];
+    $tamano = $data['tamano'];
+    $precio = (float)$data['precio'];
+    $ingredientes = $data['ingredientes'];
+
+    try {
+        $pdo = connectDB(); 
+        $pdo->beginTransaction(); // INICIA LA TRANSACCIÓN
+
+        // 1. Actualizar datos principales en pizzas_recetas
+        $stmt_receta = $pdo->prepare("
+            UPDATE pizzas_recetas SET nombre = :nombre, tamano = :tamano, precio = :precio
+            WHERE id_receta = :id_receta
+        ");
+        $stmt_receta->bindParam(':id_receta', $id_receta);
+        $stmt_receta->bindParam(':nombre', $nombre);
+        $stmt_receta->bindParam(':tamano', $tamano);
+        $stmt_receta->bindParam(':precio', $precio);
+        $stmt_receta->execute();
+        
+        // 2. Eliminar todos los ingredientes existentes (Limpiar para re-insertar)
+        $stmt_delete = $pdo->prepare("DELETE FROM receta_detalle WHERE id_receta = :id_receta");
+        $stmt_delete->bindParam(':id_receta', $id_receta);
+        $stmt_delete->execute();
+        
+        // 3. Insertar los nuevos ingredientes
+        if (!empty($ingredientes)) {
+            $stmt_insert = $pdo->prepare("
+                INSERT INTO receta_detalle (id_receta, id_producto, cantidad_uso) 
+                VALUES (:id_receta, :id_producto, :cantidad_uso)
+            ");
+            
+            foreach ($ingredientes as $ingrediente) {
+                if (!isset($ingrediente['id_producto']) || !isset($ingrediente['cantidad_uso'])) {
+                     throw new Exception("Faltan datos en los ingredientes para la actualización.");
+                }
+
+                $id_producto = (int)$ingrediente['id_producto'];
+                $cantidad_uso = (float)$ingrediente['cantidad_uso'];
+
+                $stmt_insert->execute([
+                    ':id_receta' => $id_receta,
+                    ':id_producto' => $id_producto,
+                    ':cantidad_uso' => $cantidad_uso,
+                ]);
+            }
+        }
+        
+        $pdo->commit(); // CONFIRMA LA TRANSACCIÓN
+
+        http_response_code(200);
+        echo json_encode(['success' => true, 'message' => "Receta #{$id_receta} actualizada exitosamente (Detalles e Ingredientes)."]);
+
+    } catch (\PDOException $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Error de base de datos al actualizar la receta: ' . $e->getMessage()]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Error al procesar ingredientes: ' . $e->getMessage()]);
+    }
     exit();
 }
 
 // ----------------------------------------------------
-// 5. LÓGICA DE ELIMINACIÓN (DELETE) - ELIMINAR RECETA
-// (Sin cambios)
+// 5. LÓGICA DE ELIMINACIÓN (DELETE) - ELIMINAR RECETA COMPLETA
 // ----------------------------------------------------
 if ($method === 'DELETE') {
-    http_response_code(200);
-    echo json_encode(['success' => true, 'message' => 'Receta eliminada exitosamente.']); // Simulación
+    $data = json_decode(file_get_contents('php://input'), true);
+
+    if (!isset($data['id_receta'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Falta el ID de la receta a eliminar.']);
+        exit();
+    }
+    
+    $id_receta = (int)$data['id_receta'];
+
+    try {
+        $pdo = connectDB(); 
+        $pdo->beginTransaction(); // INICIA LA TRANSACCIÓN
+
+        // 1. Eliminar ingredientes asociados (para evitar error de llave foránea)
+        $stmt_detalle = $pdo->prepare("DELETE FROM receta_detalle WHERE id_receta = :id");
+        $stmt_detalle->bindParam(':id', $id_receta);
+        $stmt_detalle->execute();
+
+        // 2. Eliminar la receta principal
+        $stmt_receta = $pdo->prepare("DELETE FROM pizzas_recetas WHERE id_receta = :id");
+        $stmt_receta->bindParam(':id', $id_receta);
+        $stmt_receta->execute();
+        
+        $pdo->commit(); // CONFIRMA LA TRANSACCIÓN
+
+        if ($stmt_receta->rowCount() > 0) {
+            http_response_code(200);
+            echo json_encode(['success' => true, 'message' => 'Receta eliminada exitosamente.']);
+        } else {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Receta no encontrada.']);
+        }
+
+    } catch (\PDOException $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Error de base de datos al eliminar: ' . $e->getMessage()]);
+    }
     exit();
 }
-
 // ----------------------------------------------------
 // 6. MÉTODO NO SOPORTADO
 // ----------------------------------------------------

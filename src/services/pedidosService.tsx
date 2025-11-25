@@ -119,7 +119,7 @@ export const updateOrderStatus = async (id: number, nuevoEstado: PedidoEstado): 
         const response = await fetch(API_URL_PEDIDOS, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, estado: nuevoEstado }),
+            body: JSON.stringify({ id_pedido: id, estado: nuevoEstado }),
         });
         const data = await response.json();
         return data as ApiResponse;

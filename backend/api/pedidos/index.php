@@ -108,32 +108,51 @@ if ($method === 'POST') {
 }
 
 // ----------------------------------------------------
-// 4. LÓGICA DE ACTUALIZACIÓN (PUT) - CORREGIDA PARA EDICIÓN COMPLETA
+// 4. LÓGICA DE ACTUALIZACIÓN (PUT) - CORREGIDA PARA ACTUALIZAR ESTADO O CAMPO ÚNICO
 // ----------------------------------------------------
 if ($method === 'PUT') {
     $data = json_decode(file_get_contents('php://input'), true);
 
-    if (!isset($data['id_pedido'])) { // Usamos id_pedido del objeto enviado
+    if (!isset($data['id_pedido'])) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Falta el ID del pedido a actualizar.']);
         exit();
     }
     
-    $id_pedido = (int)$data['id_pedido']; // Usar id_pedido
-
-    // Campos que pueden ser opcionales o venir con el valor actual si no se modificó
-    $id_proveedor = (int)($data['id_proveedor'] ?? null);
-    $id_producto = (int)($data['id_producto'] ?? null);
-    $fecha = $data['fecha'] ?? null;
-    $cantidad = (int)($data['cantidad'] ?? null);
-    $total = (float)($data['total'] ?? null);
-    $estado = $data['estado'] ?? 'Solicitado'; // Si viene, lo actualiza
-    $notas_adicionales = $data['notas_adicionales'] ?? null;
+    $id_pedido = (int)$data['id_pedido']; 
 
     try {
         $pdo = connectDB(); 
-        
-        // La consulta debe incluir todos los campos editables
+
+        // 1. OBTENER DATOS ACTUALES DEL PEDIDO
+        $stmt_current = $pdo->prepare("
+            SELECT id_proveedor, id_producto, fecha, cantidad, total, estado, notas_adicionales 
+            FROM pedidos 
+            WHERE id_pedido = :id_pedido
+        ");
+        $stmt_current->bindParam(':id_pedido', $id_pedido);
+        $stmt_current->execute();
+        $current_order = $stmt_current->fetch(PDO::FETCH_ASSOC);
+
+        if (!$current_order) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Pedido no encontrado.']);
+            exit();
+        }
+
+        // 2. FUSIONAR DATOS: Los datos nuevos (del frontend) sobrescriben los datos actuales
+        $merged_data = [
+            // Usa el valor enviado en $data, o si no existe, usa el valor actual de $current_order
+            'id_proveedor' => (int)($data['id_proveedor'] ?? $current_order['id_proveedor']),
+            'id_producto' => (int)($data['id_producto'] ?? $current_order['id_producto']),
+            'fecha' => $data['fecha'] ?? $current_order['fecha'],
+            'cantidad' => (int)($data['cantidad'] ?? $current_order['cantidad']),
+            'total' => (float)($data['total'] ?? $current_order['total']),
+            'estado' => $data['estado'] ?? $current_order['estado'], // Esto asegura que el estado se actualice
+            'notas_adicionales' => $data['notas_adicionales'] ?? $current_order['notas_adicionales'],
+        ];
+
+        // 3. EJECUTAR ACTUALIZACIÓN
         $stmt = $pdo->prepare("
             UPDATE pedidos SET 
                 id_proveedor = :id_proveedor, 
@@ -147,21 +166,20 @@ if ($method === 'PUT') {
         ");
         
         $stmt->bindParam(':id_pedido', $id_pedido);
-        $stmt->bindParam(':id_proveedor', $id_proveedor);
-        $stmt->bindParam(':id_producto', $id_producto);
-        $stmt->bindParam(':fecha', $fecha);
-        $stmt->bindParam(':cantidad', $cantidad);
-        $stmt->bindParam(':total', $total);
-        $stmt->bindParam(':estado', $estado);
-        $stmt->bindParam(':notas_adicionales', $notas_adicionales);
-        
+        $stmt->bindParam(':id_proveedor', $merged_data['id_proveedor']);
+        $stmt->bindParam(':id_producto', $merged_data['id_producto']);
+        $stmt->bindParam(':fecha', $merged_data['fecha']);
+        $stmt->bindParam(':cantidad', $merged_data['cantidad']);
+        $stmt->bindParam(':total', $merged_data['total']);
+        $stmt->bindParam(':estado', $merged_data['estado']);
+        $stmt->bindParam(':notas_adicionales', $merged_data['notas_adicionales']);
+
         $stmt->execute();
         
         if ($stmt->rowCount() > 0) {
             http_response_code(200);
-            echo json_encode(['success' => true, 'message' => "Orden #OC-" . $id_pedido . " actualizada completamente."]);
+            echo json_encode(['success' => true, 'message' => "Orden #OC-" . $id_pedido . " actualizada correctamente."]);
         } else {
-            // Esto sucede si la orden existe pero no hubo cambios en los datos.
             http_response_code(200);
             echo json_encode(['success' => true, 'message' => 'Orden encontrada, pero no se realizaron cambios.']);
         }

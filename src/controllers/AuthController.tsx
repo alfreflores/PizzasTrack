@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/MainLayout'; // Ajusta la ruta si es necesario
+import { useNavigate } from 'react-router-dom'; // [NUEVO]
 
 // Interfaz para los datos del usuario (reflejando lo que devuelve el backend)
 interface User {
@@ -15,13 +16,15 @@ const API_URL = 'http://localhost/Pizzatrack/backend/api/login.php';
 
 const AuthController: React.FC = () => {
  // Estado para guardar los datos del usuario autenticado
+ const navigate = useNavigate();
+
  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-  const storedUser = localStorage.getItem('currentUser');
+  const storedUser = sessionStorage.getItem('currentUser');
   try {
    return storedUser ? JSON.parse(storedUser) : null;
   } catch (error) {
    console.error("Error al parsear datos de usuario guardados:", error);
-   localStorage.removeItem('currentUser'); // Limpiar si está corrupto
+   sessionStorage.removeItem('currentUser'); // Limpiar si está corrupto
    return null;
   }
  });
@@ -36,9 +39,9 @@ const AuthController: React.FC = () => {
  // Efecto para guardar/eliminar el usuario en localStorage cuando cambie el estado
  useEffect(() => {
   if (currentUser) {
-   localStorage.setItem('currentUser', JSON.stringify(currentUser));
+   sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
   } else {
-   localStorage.removeItem('currentUser');
+   sessionStorage.removeItem('currentUser');
   }
  }, [currentUser]);
 
@@ -74,13 +77,15 @@ const AuthController: React.FC = () => {
         name: data.user.name, 
         role: data.user.role, 
         imageUrl: data.user.imageUrl || null, 
-                id: data.user.id, // <--- CORRECCIÓN 2: Guardamos el ID del usuario
+        id: data.user.id, // <--- CORRECCIÓN 2: Guardamos el ID del usuario
       };
       setCurrentUser(loggedInUser);
       // Limpiar campos y errores
       setUsername('');
       setPassword('');
       setError('');
+
+      navigate('/');
 
     } else {
       // Autenticación Fallida (ej. error 401 del PHP o success: false)
