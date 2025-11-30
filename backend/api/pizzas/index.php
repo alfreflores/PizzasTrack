@@ -126,7 +126,6 @@ if ($method === 'POST') {
 
     // --- A. LÓGICA DE VENTA DE PIZZA (SI RECIBE 'items') ---
     if (isset($data['items']) && is_array($data['items'])) {
-        // ... (Lógica de venta - Se mantiene omitida por brevedad, asumiendo que funciona)
         $items = $data['items'];
         $total_venta = 0;
         
@@ -134,17 +133,87 @@ if ($method === 'POST') {
             $pdo = connectDB(); 
             $pdo->beginTransaction();
 
-            // A.1. PRE-VERIFICACIÓN DE STOCK y CÁLCULO DE CONSUMO (Lógica omitida por brevedad, asumiendo que funciona)
+            // A.1. PRE-VERIFICACIÓN DE STOCK y CÁLCULO DE CONSUMO
+            $consumoTotal = [];
+            
+            // 1. Calcular consumo total de ingredientes y el total de la venta
+            foreach ($items as $item) {
+                $id_receta = (int)$item['id_receta'];
+                $quantity = (int)$item['quantity'];
+                $price = (float)$item['price'];
+                $total_venta += $quantity * $price;
+                
+                // Obtener ingredientes de la receta
+                $stmt_ingredientes = $pdo->prepare("
+                    SELECT rd.cantidad_uso, p.id_producto
+                    FROM receta_detalle rd
+                    JOIN productos p ON rd.id_producto = p.id_producto
+                    WHERE rd.id_receta = :id_receta
+                ");
+                $stmt_ingredientes->bindParam(':id_receta', $id_receta);
+                $stmt_ingredientes->execute();
+                $ingredientes = $stmt_ingredientes->fetchAll(PDO::FETCH_ASSOC);
 
-            // A.2. EJECUCIÓN DE TRANSACCIÓN (Venta y Descuento)
+                foreach ($ingredientes as $ing) {
+                    $id_producto = (int)$ing['id_producto'];
+                    $cantidad_uso = (float)$ing['cantidad_uso'];
+                    $consumoTotal[$id_producto] = ($consumoTotal[$id_producto] ?? 0) + ($cantidad_uso * $quantity);
+                }
+            }
+
+            // 2. Verificar Stock
+            foreach ($consumoTotal as $id_producto => $cantidad_requerida) {
+                $stmt_stock = $pdo->prepare("SELECT stock_items, nombre FROM productos WHERE id_producto = :id_producto");
+                $stmt_stock->bindParam(':id_producto', $id_producto);
+                $stmt_stock->execute();
+                $producto_stock = $stmt_stock->fetch(PDO::FETCH_ASSOC);
+
+                if (!$producto_stock || $producto_stock['stock_items'] < $cantidad_requerida) {
+                    // Deshacer y reportar stock insuficiente
+                    $pdo->rollBack();
+                    http_response_code(409); // Conflict
+                    echo json_encode([
+                        'success' => false, 
+                        'message' => 'Stock insuficiente de ' . ($producto_stock['nombre'] ?? 'un ingrediente desconocido') . '. Cantidad requerida: ' . $cantidad_requerida . '.'
+                    ]);
+                    exit();
+                }
+            }
+            
+            // A.2. EJECUCIÓN DE TRANSACCIÓN (Registro y Descuento)
+            
+            // a. Insertar Venta Principal
             $stmt_venta = $pdo->prepare("INSERT INTO ventas_pizzas (total_venta) VALUES (:total_venta)");
             $stmt_venta->bindParam(':total_venta', $total_venta);
             $stmt_venta->execute();
             $id_venta = $pdo->lastInsertId();
 
+            // b. Insertar Detalles de Venta
             $stmt_detalle = $pdo->prepare("INSERT INTO venta_detalle (id_venta, id_receta, cantidad_pizza, precio_unitario) VALUES (:id_venta, :id_receta, :cantidad_pizza, :precio_unitario)");
             
-            // (Inserción de detalles y actualización de stock omitida por brevedad)
+            foreach ($items as $item) {
+                $stmt_detalle->execute([
+                    ':id_venta' => $id_venta,
+                    ':id_receta' => (int)$item['id_receta'],
+                    ':cantidad_pizza' => (int)$item['quantity'],
+                    ':precio_unitario' => (float)$item['price'],
+                ]);
+            }
+
+            // c. Actualizar Stock
+            $stmt_stock_update = $pdo->prepare("
+                UPDATE productos 
+                SET stock_items = stock_items - :cantidad_usada 
+                WHERE id_producto = :id_producto
+            ");
+            
+            foreach ($consumoTotal as $id_producto => $cantidad_usada) {
+                $stmt_stock_update->execute([
+                    ':cantidad_usada' => $cantidad_usada,
+                    ':id_producto' => $id_producto
+                ]);
+            }
+
 
             $pdo->commit(); 
             http_response_code(201);
@@ -165,80 +234,8 @@ if ($method === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Error de servidor: ' . $e->getMessage()]);
             exit();
         }
-    } 
-    
-    // --- B. LÓGICA DE CREACIÓN DE RECETA (SI RECIBE 'nombre') ---
-    else if (isset($data['nombre'], $data['tamano'], $data['precio'], $data['ingredientes']) && is_array($data['ingredientes'])) {
-        // [MODIFICADO] Implementación completa de la creación de la receta
-        $nombre = $data['nombre'];
-        $tamano = $data['tamano'];
-        $precio = (float)$data['precio'];
-        $ingredientes = $data['ingredientes'];
-
-        try {
-            $pdo = connectDB(); 
-            $pdo->beginTransaction();
-
-            // 1. Insertar en pizzas_recetas
-            $stmt_receta = $pdo->prepare("
-                INSERT INTO pizzas_recetas (nombre, tamano, precio) 
-                VALUES (:nombre, :tamano, :precio)
-            ");
-            $stmt_receta->bindParam(':nombre', $nombre);
-            $stmt_receta->bindParam(':tamano', $tamano);
-            $stmt_receta->bindParam(':precio', $precio);
-            $stmt_receta->execute();
-            $id_receta = $pdo->lastInsertId();
-
-            // 2. Insertar en receta_detalle (ingredientes)
-            $stmt_detalle = $pdo->prepare("
-                INSERT INTO receta_detalle (id_receta, id_producto, cantidad_uso) 
-                VALUES (:id_receta, :id_producto, :cantidad_uso)
-            ");
-
-            foreach ($ingredientes as $ingrediente) {
-                // Aseguramos que los campos existen y son válidos
-                if (!isset($ingrediente['id_producto']) || !isset($ingrediente['cantidad_uso'])) {
-                     throw new Exception("Faltan datos en los ingredientes.");
-                }
-
-                $id_producto = (int)$ingrediente['id_producto'];
-                $cantidad_uso = (float)$ingrediente['cantidad_uso'];
-
-                $stmt_detalle->execute([
-                    ':id_receta' => $id_receta,
-                    ':id_producto' => $id_producto,
-                    ':cantidad_uso' => $cantidad_uso,
-                ]);
-            }
-
-            $pdo->commit(); 
-            http_response_code(201);
-            echo json_encode(['success' => true, 'message' => 'Receta creada exitosamente.', 'id_receta' => $id_receta]);
-            exit();
-            
-        } catch (\PDOException $e) {
-            $pdo->rollBack();
-            http_response_code(500);
-            echo json_encode([
-                'success' => false, 
-                'message' => 'Error DB al crear la receta: ' . $e->getMessage()
-            ]);
-            exit();
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Error al procesar ingredientes: ' . $e->getMessage()]);
-            exit();
-        }
     }
-
-    // Si POST no contiene ni 'items' ni 'nombre', es un error de formato.
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Faltan datos requeridos para POST.']);
-    exit();
 }
-
 // ----------------------------------------------------
 // 4. LÓGICA DE ACTUALIZACIÓN (PUT) - EDITAR RECETA Y SUS INGREDIENTES
 // ----------------------------------------------------
