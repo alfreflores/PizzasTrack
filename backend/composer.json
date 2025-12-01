@@ -1,0 +1,11 @@
+{
+    "name": "jorge/backend",
+    "description": "pizzeria",
+    "authors": [
+        {
+            "name": "Jorgemacias-12",
+            "email": "63885983+Jorgemacias-12@users.noreply.github.com"
+        }
+    ],
+    "require": {}
+}
